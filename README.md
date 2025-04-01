@@ -1,222 +1,240 @@
 # Agentic Platform Engineering with GitHub Copilot, Azure & MCP
 
-```mermaid
-%%{init: { 
-  'theme': 'base',
-  'themeVariables': {
-    'primaryColor': '#2E73B8',
-    'primaryTextColor': '#fff',
-    'primaryBorderColor': '#1D4B7A',
-    'lineColor': '#3F3F3F',
-    'secondaryColor': '#006ACC',
-    'tertiaryColor': '#fff'
-  }
-}}%%
-flowchart LR
-  %% Global styles
-  classDef default fill:#fff,stroke:#333,stroke-width:2px
-  classDef plane fill:#f5f5f5,stroke:#333,stroke-width:3px,font-size:14px
-  classDef azure fill:#0072C6,color:#fff,stroke:#0063B1,stroke-width:2px
-  classDef github fill:#24292E,color:#fff,stroke:#1b1f23,stroke-width:2px
-  classDef mcp fill:#4B0082,color:#fff,stroke:#36005F,stroke-width:2px
-  
-  subgraph DevPlatform["Developer Platform"]
-    direction TB
-    style DevPlatform fill:#f0f0f0,stroke:#2E73B8,stroke-width:4px,color:#2E73B8,font-weight:bold,font-size:16px
-    
-    subgraph Control_Plane["Developer Control Plane"]
-        direction TB
-        style Control_Plane fill:#ffffff,stroke:#2E73B8,stroke-width:2px,font-size:14px
-        GitHub.com["GitHub.com"]:::github
-        IDE["IDE"]:::github
-        GitHub_Copilot["GitHub Copilot"]:::github
-        GitHub.com --> GitHub_Copilot
-        IDE --> GitHub_Copilot
-    end
-    
-    subgraph Orchestrator["Orchestrator Plane"]
-        direction TB
-        style Orchestrator fill:#ffffff,stroke:#4B0082,stroke-width:2px,font-size:14px
-        PE_Agent["Copilot Agent"]:::mcp
-        PE_MCP_Server["Platform Engineering MCP"]:::mcp
-        PE_Configuration_Repo["Configuration Repository"]:::github
-        GitHub_MCP["GitHub MCP"]:::mcp
-        Azure_MCP["Azure MCP"]:::mcp
-        
-        PE_Agent -->|"calls"| PE_MCP_Server -->|"reads"| PE_Configuration_Repo
-        PE_Agent -->|"calls"| GitHub_MCP
-        PE_Agent -->|"calls"| Azure_MCP
-        PE_MCP_Server -->|"manages"| GitHub_MCP
-        PE_MCP_Server -->|"manages"| Azure_MCP
-    end
-    
-    subgraph Version_Control["Version Control"]
-        style Version_Control fill:#ffffff,stroke:#24292E,stroke-width:2px,font-size:14px
-        GitHub["GitHub"]:::github
-        Azure_DevOps["Azure DevOps"]:::azure
-    end
-    
-    subgraph Build["Build & Delivery Plane"]
-        direction TB
-        style Build fill:#ffffff,stroke:#0072C6,stroke-width:2px,font-size:14px
-        subgraph Pipelines["CI/CD Pipelines"]
-            style Pipelines fill:#f8f8f8,stroke:#666,stroke-width:1px
-            GitHub_Actions["GitHub Actions"]:::github
-            Azure_Pipelines["Azure Pipelines"]:::azure
-        end
-        subgraph Registry["Registries"]
-            style Registry fill:#f8f8f8,stroke:#666,stroke-width:1px
-            GitHub_Packages["GitHub Packages"]:::github
-            Azure_Container_Registry["Azure Container Registry"]:::azure
-        end
-    end
-    
-    subgraph Infra["Infrastructure Plane"]
-        style Infra fill:#ffffff,stroke:#0072C6,stroke-width:2px,font-size:14px
-        AKS["AKS"]:::azure
-        CosmosDB["Cosmos DB"]:::azure
-        Azure_App_Service["App Service"]:::azure
-        APIM["API Management"]:::azure
-    end
-  end
-  
-  %% External connections with better styling
-  GitHub_Copilot --> PE_Agent
-  GitHub_MCP --> GitHub_Actions
-  GitHub_MCP --> GitHub_Packages
-  GitHub_MCP --> GitHub
-  Azure_MCP --> Azure_DevOps
-  Azure_MCP --> Azure_Pipelines
-  Azure_MCP --> Azure_Container_Registry
-  Azure_MCP --> Infra
+This guide outlines an architecture for leveraging the Model Context Protocol (MCP) to create a powerful Platform Engineering experience through AI agents. By combining MCP's tools, prompts, and client-server architecture, we can create seamless, standardized workflows that automate complex platform engineering tasks while maintaining the human-in-the-loop element essential for critical decisions.
 
-  %% Add relationship links styling
-  linkStyle default stroke:#666,stroke-width:2px
-  
-  %% Add hover effects for nodes
-  click GitHub_Copilot "https://github.com/features/copilot" "Learn more about GitHub Copilot"
-  click AKS "https://azure.microsoft.com/services/kubernetes-service/" "Learn more about AKS"
+## 1. Architecture Overview
+
+The architecture consists of three primary components:
+
+1. **Client LLM Interface**: The entry point for users (GitHub Copilot in VS Code or GitHub.com)
+2. **PE MCP Server**: The orchestration layer that defines workflows and exposes platform engineering capabilities
+3. **Product-specific MCP Servers**: Specialized servers for GitHub, Azure, and other tools
+
+```mermaid
+    flowchart TD
+    User([Developer])
+    
+    subgraph "Development Interfaces"
+        VSCode[VS Code]
+        GitHub[GitHub.com]
+    end
+    
+    User -->|Uses| VSCode
+    User -->|Uses| GitHub
+    User -.->|Selects Prompt| PE_MCP
+    VSCode -->|Natural Language| ClientLLM[GitHub Copilot Agent]
+    GitHub -->|Natural Language| ClientLLM
+    
+    subgraph "MCP Ecosystem"
+        ClientLLM <-->|MCP Prompts/Tools| PE_MCP[Platform Engineering MCP Server]
+        ClientLLM <-->|MCP Tools| GitHub_MCP[GitHub MCP Server]
+        ClientLLM <-->|MCP Tools| Azure_MCP[Azure MCP Server]
+    end
+    
+    PE_MCP -->|Reads| ConfigRepo[(Configuration Repository)]
+    
+    subgraph "Orchestrated Resources"
+        GitHub_MCP --> GitHubResources[GitHub Repositories
+        GitHub Actions Workflows]
+        Azure_MCP --> AzureResources[
+        DevBox
+        AKS
+        App Services
+        Functions
+        CosmosDB
+        Azure SQL
+        Virtual Networks
+        Load Balancers
+        Azure Monitor]
+    end
+    
+    style ClientLLM fill:#FF69B4,stroke:#fff,color:#fff
+    style PE_MCP fill:#4169E1,stroke:#fff,color:#fff
+    style GitHub_MCP fill:#2E8B57,stroke:#fff,color:#fff
+    style Azure_MCP fill:#4682B4,stroke:#fff,color:#fff
+    style ConfigRepo fill:#CD853F,stroke:#fff,color:#fff
+    style AzureResources fill:#4682B4,stroke:#fff,color:#fff
+    style GitHubResources fill:#2E8B57,stroke:#fff,color:#fff
+    style User fill:#DEB887,stroke:#fff,color:#333
+    style VSCode fill:#007ACC,stroke:#fff,color:#fff
+    style GitHub fill:#24292E,stroke:#fff,color:#fff
+    
+    classDef default fill:#2F4F4F,stroke:#fff,color:#fff
 ```
 
-This document outlines an innovative Platform Engineering architecture that leverages GitHub Copilot's AI capabilities and Model Context Protocol (MCP) to create an intelligent, automated platform engineering experience. The architecture is designed to streamline the development process by exposing platform capabilities as tools that can be accessed through natural language interactions.
+## 2. Detailed Workflow Sequence
 
-## 🏗️ Architecture Components
-
-### 1. 👩‍💻 Developer Control Plane
-
-The Developer Control Plane serves as the primary interface for developers to interact with the platform:
-
-#### 🎯 Entry Points
-  - 💻 VSCode with GitHub Copilot
-  - 🌐 GitHub.com with GitHub Copilot
-
-#### 🔄 Workflow Initiation
-All through natural language interactions with GitHub Copilot, Developers can:
-- 🆕 Request new project provisioning
-- 🚀 Initiate application deployments
-- ⚙️ Configure platform resources
-
-
-### 2. 🧠 Orchestrator Plane
-
-The Orchestrator Plane serves as the intelligent coordination layer, where MCP servers expose tools for the GitHub Copilot Agent to consume:
-
-#### 🎮 Platform Engineering MCP Server
-This MCP Server is central to the PE architecture. **It is the Developer 🛠️ High-Level Tool Provider**:
-  - Exposes platform engineering tools to the Copilot Agent
-  - Provides **high-level operations** like:
-    * 📦 Project provisioning
-    * 🌍 Environment creation
-    * 🚀 Application deployment
-    * 🏗️ Infrastructure setup
-  - 🎯 Abstracts complexity of underlying tools
-  - 📋 Maintains platform standards and best practices
-
-#### 📝 Configuration Management
-The PE MCP Server is grounded on customer specific configuration saved in a GitHub Repository which acts as **💾 Central Source of Truth**: 
+This sequence diagram demonstrates how the Platform Engineering system leverages the Model Context Protocol (MCP) to create a structured interaction between LLMs and platform tooling. The workflow follows MCP's key architectural principles:
+<br><br>
+```mermaid
+sequenceDiagram
+    User->>Client LLM: "Create a new Java project"
+    Client LLM->>PE MCP Server: Invokes "create-project" prompt
+    PE MCP Server->>Client LLM: Returns parameterized workflow guide
+    Client LLM->>User: Requests detailed project requirements
+    User->>Client LLM: Provides details (Java, Spring Boot, microservice, OAuth)
     
-- 📂 All platform configurations stored in a GitHub repository
-- 🌟 Main branch serves as the single source of truth
-- 🔄 PE MCP Server automatically pulls latest configurations
-- 📜 Changes tracked and versioned through Git
+    Client LLM->>PE MCP Server: list-templates tool call with filters
+    PE MCP Server->>Client LLM: Returns matching templates with detailed metadata
+    
+    Client LLM->>Client LLM: Analyzes templates against requirements
+    Client LLM->>User: Recommends best template with explanation
+    User->>Client LLM: Confirms template choice
+    
+    Client LLM->>GitHub MCP: create-repository tool call with chosen template
+    GitHub MCP->>Client LLM: Repository created response
+    
+    Client LLM->>PE MCP Server: list-workflow-templates tool call
+    PE MCP Server->>Client LLM: Returns available CI/CD workflow templates
+    
+    Client LLM->>Client LLM: Analyzes workflow templates against project needs
+    Client LLM->>User: Recommends workflow templates with explanation
+    User->>Client LLM: Confirms workflow choice
+    
+    Client LLM->>GitHub MCP: setup-workflows tool call with chosen workflows
+    GitHub MCP->>Client LLM: Workflows configured
+    
+    Client LLM->>User: Ask about test environment
+    User->>Client LLM: "Yes, provision test env"
+    
+    Client LLM->>PE MCP Server: list-environment-templates tool call
+    PE MCP Server->>Client LLM: Returns matching environment templates
+    Client LLM->>User: Recommends environment template with explanation
+    User->>Client LLM: Confirms environment choice
+    
+    Client LLM->>Azure MCP: provision-resources call with chosen template
+    Azure MCP->>Client LLM: Resources provisioned
+    
+    Client LLM->>User: Comprehensive summary of actions taken
+```
+<br>
 
-### 3. 🔄 Integration and Delivery Plane
+1. **Prompts as Workflow Templates**: The PE MCP Server defines standardized prompt templates that guide both the LLM and user through complex platform engineering tasks. These prompts surface as discoverable, interactive elements.
 
-The Integration and Delivery Plane provides access to build and delivery capabilities through specialized products connected via their respective MCP Servers. Example: GitHub Actions and Azure Pipelines.
+   When a prompt is returned to the LLM, it includes structured guidance that helps the LLM:
+   - Break down complex tasks into discrete steps
+   - Select appropriate MCP tools from different servers (GitHub MCP, Azure MCP, etc.)
+   - Maintain context across multiple tool invocations
+   - Follow standardized workflows while adapting to specific requirements
+   - Know when to seek user confirmation for critical decisions
 
+2. **Tools for Concrete Actions**: Each action (creating repositories, configuring workflows, provisioning resources) is implemented as an MCP tool with well-defined parameters and validation, allowing the LLM to execute operations securely.
 
-### 4. ☁️ Infrastructure Plane
+3. **Client-Server Architecture**: Following MCP's design, each service (PE, GitHub, Azure) runs as a separate server that exposes its capabilities through prompts and tools. The Client LLM acts as the coordinator, maintaining individual connections with each server.
 
-The Infrastructure Plane exposes **Azure resources through the Azure MCP server's** tool collection:
+4. **Human-in-the-Loop Control**: The workflow preserves MCP's human oversight model - all key decisions (template selection, workflow choices, environment provisioning) require explicit user confirmation before tools are invoked.
 
-- **💻 Compute Management**:
-  - 🎮 AKS cluster operations
-  - 📦 Container instance deployment
-  - 🖥️ VM provisioning
-  - ⚡ App Service configuration
+This approach ensures standardization while maintaining MCP's security principles and keeping humans in control of critical platform engineering decisions.
 
-- **🗄️ Data Services**:
-  - 💾 Database provisioning
-  - 📁 Storage account management
-  - ⚡ Cache configuration
-  - 💾 Backup and restore
+## 4. Configuration Repository
 
-- **🌐 Network Configuration**:
-  - 🔌 Virtual network setup
-  - 🚪 Gateway management
-  - 🔍 DNS configuration
-  - ⚖️ Load balancer provisioning
+The PE MCP Server reads from a central configuration repository that contains YAML files defining available templates such as: GitHub Repository templates, GitHub Actions workflow templates or Azure Deployment Environment templates:
 
-## 🔄 Tool-Driven Workflow Example
+```yaml
+# templates.yaml
+templates:
+  repositories:
+    - name: java-springboot-microservice
+      description: "Spring Boot microservice with OAuth2 security and API documentation"
+      url: "github.com/org/java-springboot-template"
+      language: java
+      framework: springboot
+      architectureType: microservice
+      features:
+        - oauth2
+        - swagger
+        - actuator
+      compliance:
+        - soc2
+      use-cases:
+        - "Backend services requiring authentication"
+      complexity: medium
+      
+  workflows:
+    - organization: "my-org"
+      include: 
+       - 'java-ci-workflow'
+      
+    - organization: "my-org2"
+      include:
+       - '*'
+      
+  environments:
+    - name: java-test-environment
+      description: "Test environment for Java microservices with database and monitoring"
+      language: java
+      resources:
+        - kubernetes-namespace
+        - postgres-database
+        - prometheus-monitoring
+```
 
-1. **💬 Developer Interaction**:
-   - Developer expresses intent via natural language to GitHub Copilot
-   - Example: "Create a new microservice project with a MongoDB database"
+## 3. MCP Components and Their Value
 
-2. **🎯 Tool Selection and Orchestration**:
-   - Copilot Agent interprets request and selects appropriate tools
-   - Platform Engineering MCP provides high-level project creation tool
-   - Tool executes standardized project setup workflow
+### 3.1 MCP Prompts: Guided Workflows
 
-3. **🏗️ Resource Provisioning**:
-   - Platform Engineering MCP coordinates with product-specific MCPs
-   - GitHub MCP tools create repository and configure workflows
-   - Azure MCP tools provision infrastructure components
-   - Azure DevOps MCP tools set up CI/CD pipelines
+MCP Prompts are essential for providing structured guidance to both the user and the LLM:
 
-4. **⚙️ Configuration and Deployment**:
-   - Tools apply standard configurations and security policies
-   - Infrastructure is provisioned using validated templates
-   - CI/CD pipelines are configured using best practices
-   - Monitoring and logging are automatically set up
+1. **Value in Platform Engineering**:
+   - **Workflow Standardization**: Prompts define consistent workflows across the organization
+   - **Guided Experience**: Step-by-step templates guide users through complex processes
+   - **Context Preservation**: Maintain context throughout multi-step processes
+   - **Discoverability**: Prompts appear as slash commands in supporting clients
 
-## ✨ Key Benefits
+2. **Implementation Approach**:
+   - Define high-level workflow prompts that outline the entire process
+   - Include dynamic parameters based on user requirements
+   - Structure prompts as conversations that guide both user and LLM
+   - Design prompts to anticipate common decision points
 
-1. **🛠️ Tool-Driven Architecture**:
-   - 📋 Standardized platform capabilities
-   - 🎯 Consistent resource provisioning
-   - 🤖 Automated best practices
-   - ❌ Reduced human error
+### 3.2 MCP Tools: Executable Capabilities
 
-2. **💬 Natural Language Interface**:
-   - 🗣️ Tools accessible through conversation
-   - 🎯 Complex operations simplified
-   - 📉 Reduced learning curve
-   - 📈 Increased developer productivity
+MCP Tools enable concrete actions and information retrieval:
 
-3. **🔒 Platform Governance**:
-   - 🎮 Controlled tool access
-   - 📋 Standardized configurations
-   - ✅ Policy enforcement
-   - 📝 Audit capabilities
+1. **Value in Platform Engineering**:
+   - **Action Execution**: Perform operations on GitHub, Azure, and other systems
+   - **Information Retrieval**: Fetch available templates and configuration options
+   - **Standardization**: Ensure operations follow organization standards
+   - **Security**: Properly scoped tools with parameter validation
 
-4. **🔌 Extensibility**:
-   - ➕ Easy addition of new tools
-   - 🛠️ Custom tool creation
-   - 🔗 Integration with new services
-   - 🔄 Flexible platform evolution
+## 4. Use Cases
 
-This architecture represents a modern approach to platform engineering where platform capabilities are exposed as tools, accessible through natural language interactions with GitHub Copilot. This allows developers to focus on their intentions while the platform handles the complexity of execution through standardized, secure, and automated processes.
+### 4.1 New Project Creation
+
+**Value Proposition**: Automate the creation of standardized, compliant projects in minutes instead of hours.
+
+**Workflow**:
+1. Developer expresses intent to create a new project
+2. LLM gathers requirements through natural conversation
+3. PE MCP Server provides appropriate templates based on requirements
+4. LLM recommends best template and explains reasoning
+5. Upon confirmation, GitHub MCP creates repository from template
+6. LLM recommends appropriate CI/CD workflows from PE MCP Server
+7. GitHub MCP configures workflows
+8. LLM offers to provision test environment
+9. Azure MCP provisions resources if requested
+
+### 4.2 Environment Provisioning
+
+**Value Proposition**: Standardize environment creation across teams with built-in compliance and best practices.
+
+**Workflow**:
+1. Developer requests environment for existing project
+2. LLM determines project type and requirements
+3. PE MCP Server provides appropriate environment templates
+4. LLM recommends best template and explains reasoning
+5. Upon confirmation, Azure MCP provisions resources
+6. LLM summarizes provisioned resources and provides access information
+
+## 5. Conclusion
+
+The MCP-based Platform Engineering architecture offers a powerful way to combine AI-driven assistance with standardized platform operations. By leveraging MCP Prompts for workflow guidance and MCP Tools for concrete actions, while keeping humans in the loop for critical decisions, this approach balances automation with control.
+
+The result is a platform that:
+- Reduces the cognitive load on developers
+- Enforces organizational standards and best practices
+- Makes platform capabilities accessible through natural language
+- Provides predictable, repeatable outcomes
 
 ## Contributing
 
