@@ -7,6 +7,6 @@
     "strict": true,
     "outDir": "dist"
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "config/**/*"],
   "exclude": ["node_modules"]
 }
