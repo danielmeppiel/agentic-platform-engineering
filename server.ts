@@ -1,20 +1,54 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import * as fs from 'fs';
-import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { App } from "octokit";
 import { PEConfig } from './types.js';
 
-// Load PE configuration from YAML
-function loadPEConfig(): PEConfig {
+// Required environment variables
+const GITHUB_APP_ID: string = process.env.GITHUB_APP_ID || '';
+const GITHUB_PRIVATE_KEY: string = process.env.GITHUB_PRIVATE_KEY || '';
+const GITHUB_INSTALLATION_ID: string = process.env.GITHUB_INSTALLATION_ID || '';
+const PE_CONFIG_REPO: string = process.env.PE_CONFIG_REPO || ''; // format: owner/repo
+const PE_CONFIG_PATH: string = process.env.PE_CONFIG_PATH || 'pe.yaml';
+
+if (!GITHUB_APP_ID || !GITHUB_PRIVATE_KEY || !GITHUB_INSTALLATION_ID || !PE_CONFIG_REPO) {
+  console.error('Missing required environment variables: GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID, PE_CONFIG_REPO');
+  process.exit(1);
+}
+
+// Load PE configuration from GitHub repository
+async function loadPEConfig(): Promise<PEConfig> {
   try {
-    const configPath = path.resolve(__dirname, 'config', 'pe.yaml');
-    const fileContents = fs.readFileSync(configPath, 'utf8');
-    const config = yaml.load(fileContents) as PEConfig;
-    return config;
+    // Initialize GitHub App
+    const app = new App({
+      appId: GITHUB_APP_ID,
+      privateKey: GITHUB_PRIVATE_KEY,
+    });
+
+    // Get an authenticated Octokit instance for this installation
+    const octokit = await app.getInstallationOctokit(Number(GITHUB_INSTALLATION_ID));
+    
+    // Get the owner and repo from PE_CONFIG_REPO
+    const [owner, repo] = PE_CONFIG_REPO.split('/');
+    
+    // Get the configuration file from GitHub
+    const response = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: PE_CONFIG_PATH,
+    });
+
+    // GitHub API returns content as base64
+    if ('content' in response.data && typeof response.data.content === 'string') {
+      const content = Buffer.from(response.data.content, 'base64').toString();
+      const config = yaml.load(content) as PEConfig;
+      return config;
+    } else {
+      throw new Error('Unexpected response structure: content not found.');
+    }
   } catch (error) {
-    console.error('Error loading PE configuration:', error);
+    console.error('Error loading PE configuration from GitHub:', error);
     return {
       sources: {
         github_workflow_orgs: [],
@@ -78,7 +112,7 @@ server.prompt(
 );
 
 // Load the PE configuration
-const peConfig = loadPEConfig();
+const peConfig = await loadPEConfig();
 
 // Tool 1: Get available repository templates with optional filters
 server.tool(

@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "This guide outlines an architecture for leveraging the Model Context Protocol (MCP) to create a powerful Platform Engineering experience through AI agents. By combining MCP's tools, prompts, and client-server architecture, we can create seamless, standardized workflows that automate complex platform engineering tasks while maintaining the human-in-the-loop element essential for critical decisions.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "build": "tsc && cp -r config dist/",
-    "start": "node dist/server.js"
+    "start": "node -r dotenv/config dist/server.js",
+    "dev": "nodemon -r dotenv/config --exec ts-node server.ts"
   },
   "repository": {
     "type": "git",
@@ -20,10 +22,16 @@
   "homepage": "https://github.com/microsoft/agentic-platform-engineering#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.13.17",
+    "dotenv": "^16.4.7",
     "js-yaml": "^4.1.0",
-    "typescript": "^5.8.2",
+    "octokit": "^4.1.2",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.8.2",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }

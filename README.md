@@ -2,6 +2,14 @@
 
 This guide outlines an architecture for leveraging the Model Context Protocol (MCP) to create a powerful Platform Engineering experience through AI agents. By combining MCP's tools, prompts, and client-server architecture, we can create seamless, standardized workflows that automate complex platform engineering tasks while maintaining the human-in-the-loop element essential for critical decisions.
 
+Create your .env file based on .env.example and then run locally with MCP Inspector as: 
+
+```bash
+npm install
+npm run build
+npx env-cmd -f .env npx @modelcontextprotocol/inspector node dist/server.js
+```
+
 ## 1. Architecture Overview
 
 The architecture consists of three primary components:
