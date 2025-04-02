@@ -1,0 +1,68 @@
+# GitHub Platform Engineering Templates Configuration
+sources:
+  # GitHub Organizations containing workflow templates
+  # These templates are loaded from .github/workflow-templates in each org
+  github_workflow_orgs:
+    - name: "my-company"
+      url: "https://github.com/my-company"
+      description: "Main company organization containing standard CI/CD workflows"
+    - name: "my-company-platform"
+      url: "https://github.com/my-company-platform" 
+      description: "Platform team organization with infrastructure workflows"
+  
+  # GitHub Repository Templates
+  # These are repositories marked as templates that can be used as starting points
+  github_repository_templates:
+    - name: "java-springboot-microservice"
+      url: "https://github.com/my-company/java-springboot-template"
+      description: "Spring Boot microservice with OAuth2 security and API documentation"
+      metadata:
+        language: java
+        framework: springboot
+        architectureType: microservice
+        features:
+          - oauth2
+          - swagger
+          - actuator
+        compliance:
+          - soc2
+        use-cases:
+          - "Backend services requiring authentication"
+        complexity: medium
+    
+    - name: "python-fastapi-service"
+      url: "https://github.com/my-company/python-fastapi-template"
+      description: "Python FastAPI service with OpenAPI documentation"
+      metadata:
+        language: python
+        framework: fastapi
+        architectureType: microservice
+        features:
+          - openapi
+          - sqlalchemy
+          - alembic
+        compliance:
+          - soc2
+        use-cases:
+          - "Data processing services"
+          - "Backend APIs"
+        complexity: low
+    
+    - name: "typescript-react-frontend"
+      url: "https://github.com/my-company/typescript-react-template"
+      description: "React frontend application with TypeScript and Material UI"
+      metadata:
+        language: typescript
+        framework: react
+        architectureType: frontend
+        features:
+          - material-ui
+          - react-router
+          - redux
+        compliance:
+          - accessibility
+          - soc2
+        use-cases:
+          - "Web applications with modern UI"
+          - "Admin portals and dashboards"
+        complexity: medium
