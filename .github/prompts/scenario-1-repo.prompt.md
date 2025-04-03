@@ -10,6 +10,7 @@ Help me create a new project by following these steps:
    - Use get-repository-templates tool to find matching templates
    - Filter by language, framework, architecture type if specified
    - Consider features (example: oauth2, material-ui) and compliance (example: soc2) if specified
+   - Expand the search if you don't find matching templates at first, e.g. by removing filters - you must find a template. Do NEVER propose creating a repository without a template.
    - Review options and recommend best match to user
 
 3. Create Repository:

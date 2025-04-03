@@ -2,8 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import * as yaml from 'js-yaml';
-import { App } from "octokit";
 import { PEConfig } from './types.js';
+import { GitHubClient } from './github.js';
 
 // Required environment variables
 const GITHUB_APP_ID: string = process.env.GITHUB_APP_ID || '';
@@ -17,36 +17,15 @@ if (!GITHUB_APP_ID || !GITHUB_PRIVATE_KEY || !GITHUB_INSTALLATION_ID || !PE_CONF
   process.exit(1);
 }
 
+// Initialize GitHub client
+const githubClient = new GitHubClient(GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID);
+
 // Load PE configuration from GitHub repository
 async function loadPEConfig(): Promise<PEConfig> {
   try {
-    // Initialize GitHub App
-    const app = new App({
-      appId: GITHUB_APP_ID,
-      privateKey: GITHUB_PRIVATE_KEY,
-    });
-
-    // Get an authenticated Octokit instance for this installation
-    const octokit = await app.getInstallationOctokit(Number(GITHUB_INSTALLATION_ID));
-    
-    // Get the owner and repo from PE_CONFIG_REPO
     const [owner, repo] = PE_CONFIG_REPO.split('/');
-    
-    // Get the configuration file from GitHub
-    const response = await octokit.rest.repos.getContent({
-      owner,
-      repo,
-      path: PE_CONFIG_PATH,
-    });
-
-    // GitHub API returns content as base64
-    if ('content' in response.data && typeof response.data.content === 'string') {
-      const content = Buffer.from(response.data.content, 'base64').toString();
-      const config = yaml.load(content) as PEConfig;
-      return config;
-    } else {
-      throw new Error('Unexpected response structure: content not found.');
-    }
+    const content = await githubClient.getConfigFile(owner, repo, PE_CONFIG_PATH);
+    return yaml.load(content) as PEConfig;
   } catch (error) {
     console.error('Error loading PE configuration from GitHub:', error);
     return {
@@ -115,9 +94,34 @@ server.prompt(
 const peConfig = await loadPEConfig();
 
 // Tool 1: Get available repository templates with optional filters
-server.tool(
-  "get-repository-templates",
-  {
+server.tool("get-repository-templates", 
+  `Retrieve and filter standardized repository templates based on project requirements.
+
+PURPOSE:
+- Find organization-approved repository templates for new projects
+- Filter templates based on technical and compliance requirements
+- Access pre-configured project structures with best practices
+- Match templates to specific project needs and constraints
+
+CAPABILITIES:
+- Filters templates by programming language
+- Filters by framework or library requirements
+- Matches architectural patterns (e.g., microservices, monolith)
+- Finds templates with specific features or capabilities
+- Filters by compliance requirements (e.g., HIPAA, SOC2)
+- Matches complexity levels for different project scales
+
+LIMITATIONS:
+- Only returns templates from pre-configured template repositories
+- Cannot create or modify templates directly
+- Cannot validate template compatibility with specific environments
+- Filters are case-insensitive exact matches only
+
+USE WHEN:
+- Starting new development projects
+- Ensuring compliance with organizational standards
+- Implementing standardized project structures
+- Selecting templates based on technical requirements`, {
     language: z.string().optional(),
     framework: z.string().optional(),
     architectureType: z.string().optional(),
@@ -187,9 +191,31 @@ server.tool(
 );
 
 // Tool 2: Get available GitHub Actions templates with optional filters
-server.tool(
-  "get-github-actions-templates",
-  {
+server.tool("get-github-actions-templates",
+  `Retrieve and filter GitHub Actions workflow templates from configured workflow organizations.
+
+PURPOSE:
+- Find standardized CI/CD workflow templates for your repositories
+- Discover organization-specific workflow patterns and best practices
+- Access pre-configured GitHub Actions templates for common use cases
+
+CAPABILITIES:
+- Lists all available workflow template organizations
+- Filters templates by organization name
+- Returns template URLs, descriptions, and metadata
+- Provides direct links to workflow template files
+
+LIMITATIONS:
+- Only returns templates from pre-configured workflow organizations
+- Does not create or modify workflow files directly
+- Cannot validate workflow compatibility with specific repositories
+- Organization filter is case-insensitive partial match only
+
+USE WHEN:
+- Setting up new CI/CD pipelines
+- Standardizing workflow patterns across repositories
+- Finding organization-approved workflow templates
+- Implementing best practices for GitHub Actions`, {
     organization: z.string().optional()
   },
   async (params) => {
@@ -219,6 +245,62 @@ server.tool(
         }
       ]
     };
+  }
+);
+
+// Tool 3: Create a new repository from a template
+server.tool("create-repository-from-template",
+  `Create a new GitHub repository using a template repository.
+
+PURPOSE:
+- Create standardized repositories from pre-approved templates
+- Ensure consistent project structure and setup
+- Maintain compliance and best practices across new projects
+
+CAPABILITIES:
+- Creates a new repository from any GitHub template repository
+- Supports private or public repository creation
+- Allows custom repository name and description
+- Includes all template repository files and structure
+- Maintains git history from template (optional)
+
+LIMITATIONS:
+- Requires template repository to be marked as template on GitHub
+- Cannot modify template contents during creation
+- Template and new repository must be accessible to the authenticated user
+- Cannot create repository if name already exists in organization/account
+
+USE WHEN:
+- Starting new projects based on standardized templates
+- Creating repositories that need specific initial structure
+- Implementing organization-wide repository patterns`, {
+    template_owner: z.string(),
+    template_repo: z.string(),
+    owner: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    private: z.boolean().optional(),
+    include_all_branches: z.boolean().optional()
+  },
+  async (params) => {
+    try {
+      const result = await githubClient.createRepositoryFromTemplate(params);
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully created repository ${result.fullName}\nURL: ${result.htmlUrl}`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating repository from template:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
   }
 );
 

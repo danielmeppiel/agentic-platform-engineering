@@ -1,8 +1,103 @@
 # Agentic Platform Engineering with GitHub Copilot, Azure & MCP
 
-This guide outlines an architecture for leveraging the Model Context Protocol (MCP) to create a powerful Platform Engineering experience through AI agents. By combining MCP's tools, prompts, and client-server architecture, we can create seamless, standardized workflows that automate complex platform engineering tasks while maintaining the human-in-the-loop element essential for critical decisions.
+**📺 [Watch the Demo Video](https://microsofteur-my.sharepoint.com/personal/dmeppiel_microsoft_com/_layouts/15/embed.aspx?UniqueId=87c0fc77-f411-4d16-b36c-8ab663b7c23e) (requires Microsoft account access)**
 
-Create your .env file based on .env.example and then run locally with MCP Inspector as: 
+A Platform Engineering MCP Server that orchestrates end-to-end platform engineering workflows. This server enables developers to create new projects, provision environments, and manage infrastructure using natural language through GitHub Copilot, while ensuring compliance with organizational standards and best practices.
+
+1. [Getting Started](#2-getting-started)
+2. [Usage](#1-use-cases)
+   - [New Project Creation](#11-new-project-creation)
+   - [Environment Provisioning](#12-environment-provisioning)
+3. [Architecture Overview](#3-architecture-overview)
+4. [Detailed Workflow Sequence](#4-detailed-workflow-sequence)
+5. [MCP Components and Their Value](#5-mcp-components-and-their-value)
+   - [MCP Prompts: Guided Workflows](#51-mcp-prompts-guided-workflows)
+   - [MCP Tools: Executable Capabilities](#52-mcp-tools-executable-capabilities)
+6. [Configuration Repository](#6-configuration-repository)
+7. [Contributing](#7-contributing)
+8. [Trademarks](#8-trademarks)
+
+## 1. Getting Started
+
+### 1.1 Setup GitHub Authentication
+
+This MCP Server authenticates with GitHub using a GitHub App that you must create and install in a target GitHub Organization. This Organization is the one that contains your Engineering Platform configuration and most of your templates. 
+
+Follow these steps to set up GitHub App authentication:
+
+1. Create a new GitHub App in your Organization:
+   - Go to your Organization's Settings
+   - Navigate to "GitHub Apps" under "Developer settings", Click "New GitHub App"
+   - Fill in the following details:
+     - GitHub App name: e.g., "Platform Engineering MCP"
+     - Homepage URL: Your organization's URL
+     - Webhook: Disable (not required)
+     - Repository permissions:
+        - Contents: Read & write
+        - Metadata: Read-only
+        - Actions: Read & write
+        - Administration: Read & write
+   - Click "Create GitHub App"
+
+2. Generate a private key for your GitHub App:
+   - After creation, scroll down to the "Private keys" section and click "Generate a private key"
+   - Save the downloaded .pem file securely
+
+3. Install the GitHub App in your Organization:
+   - On the GitHub App settings page, click "Install App"
+   - Select the Organization where you want to install the app
+   - Choose repositories:
+     - Either select "All repositories"
+     - Or select specific repositories including your PE configuration repository
+   - Click "Install"
+
+4. Write down the following environment variables:
+    - `GITHUB_APP_ID`: Found in the GitHub App's settings page (displayed as "App ID")
+    - `GITHUB_PRIVATE_KEY`: The contents of the .pem file you downloaded
+      - Open the .pem file
+      - Copy all contents including "-----BEGIN RSA PRIVATE KEY-----" and "-----END RSA PRIVATE KEY-----"
+      - Replace newlines with "\n" in the .env file, ask Copilot to do this for you! 
+    - `GITHUB_INSTALLATION_ID`: Found in the URL when you installed the app
+      - Go to Organization Settings > GitHub Apps > Your App > Configure
+      - The number in the URL after "installations/" is your installation ID
+    - `PE_CONFIG_REPO`: Your organization's platform engineering configuration repository
+      - Format: "organization-name/repository-name"
+
+### 1.2 Setup your Engineering Platform on GitHub
+
+In the organization where you have installed the GitHub App, you must either create or choose an existing repository as the one which will hold your engineering platform's configuration file. In your chosen repository:
+
+  1. Create a file called `pe.yaml`.
+  2. Copy and paste the contents of the `config/pe.yaml` example file in this repo. This is just a starter example that you must edit.
+  3. Edit your `pe.yaml` file to point to your repository templates. [GitHub's documentation on creating repository templates](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-template-repository).
+  4. Edit your `pe.yaml` file to point to GitHub Organizations from where you want to source GitHub Actions workflow templates. These must be located under the `.github` repo's `workflow-templates` folder in each of the Organizations you add. [GitHub's documentation on creating workflow templates for your organization](https://docs.github.com/en/actions/sharing-automations/creating-workflow-templates-for-your-organization). 
+
+### 1.3 Setup the MCP Server in VSCode Insiders
+
+In VSCode Insiders, add a new MCP Server to your User Settings JSON file and make sure to edit the values between "<>" brackets:
+
+  ```json
+  "mcp": {
+      "servers": {
+        "platform-eng-copilot": {
+          "command": "node",
+          "args": [
+              "<ABSOLUTE_PATH>/platform-eng-copilot/dist/server.js"
+          ],
+          "env": {
+            "GITHUB_APP_ID": "<YOUR_GITHUB_APP_ID>",
+            "GITHUB_PRIVATE_KEY":"<YOUR_GITHUB_APP_PRIVATE_KEY_WITH_NO_BREAKLINES>",
+            "GITHUB_INSTALLATION_ID":"<YOUR_GITHUB_APP_INSTALLATION_ID>",
+            "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>",
+          }
+        }
+     }
+  }
+  ```
+
+### 1.4 (Optional) Inspecting locally with MCP Inspector
+
+If you want to quickly debug this MCP server, create your .env file based on .env.example and then run locally with MCP Inspector:
 
 ```bash
 npm install
@@ -10,7 +105,60 @@ npm run build
 npx env-cmd -f .env npx @modelcontextprotocol/inspector node dist/server.js
 ```
 
-## 1. Architecture Overview
+## 2. Usage
+
+**Option 1: Pre-baked PE workflows**:
+> [!NOTE] 
+> Using this MCP Server with VSCode won't allow you to use the implemented [MCP Prompts](https://spec.modelcontextprotocol.io/specification/2025-03-26/server/prompts/), as MCP Prompts are [not yet supported on VSCode](https://github.com/microsoft/vscode/issues/244173). 
+
+Use [VSCode Reusable prompts](https://code.visualstudio.com/docs/copilot/copilot-customization#_reusable-prompt-files-experimental) with the prompt files made available in this repo under `.github/prompts`. Think about these as recipes set up by your PE Admins which will guide the LLM in a standardized fashion. 
+
+For example, attach the `scenario-1-repo.prompt.md` prompt file in `.github/prompts` to the context and send it to GitHub Copilot. 
+
+**Option 2: Simple prompting:**
+
+Simply ask GitHub Copilot to help you with a task such as:
+
+>_Create a new repo for me based on a official template from my organization_
+
+>_Set up CI/CD for my repo respecting my organization's standards_
+
+>_Create a deployment environment for my microservices app using AKS based on approved templates_
+
+### 2.1 Pre-baked PE Workflows 
+
+**Value Proposition**: Automate the creation of standardized, compliant projects in minutes instead of hours.
+
+**Reusable Prompt**: `.github/prompts/scenario-1-repo.prompt.md`
+
+**Workflow**:
+1. Developer expresses intent to create a new project
+2. LLM gathers requirements through natural conversation
+3. PE MCP Server provides appropriate templates based on requirements
+4. LLM recommends best template and explains reasoning
+5. Upon confirmation, GitHub MCP creates repository from template
+6. LLM recommends appropriate CI/CD workflows from PE MCP Server
+7. GitHub MCP configures workflows
+8. LLM offers to provision test environment
+9. Azure MCP provisions resources if requested
+
+### 2.2 Environment Provisioning
+
+**Value Proposition**: Standardize environment creation across teams with built-in compliance and best practices.
+
+**Reusable Prompt**: `.github/prompts/scenario-2-env.prompt.md`
+
+**Workflow**:
+1. Developer requests environment for existing project
+2. LLM determines project type and requirements
+3. PE MCP Server provides appropriate environment templates
+4. LLM recommends best template and explains reasoning
+5. Upon confirmation, Azure MCP provisions resources
+6. LLM summarizes provisioned resources and provides access information
+
+## 3. Architecture Overview
+
+This guide outlines an architecture for leveraging the Model Context Protocol (MCP) to create a powerful Platform Engineering experience through AI agents. By combining MCP's tools, prompts, and client-server architecture, we can create seamless, standardized workflows that automate complex platform engineering tasks while maintaining the human-in-the-loop element essential for critical decisions.
 
 The architecture consists of three primary components:
 
@@ -70,7 +218,7 @@ The architecture consists of three primary components:
     classDef default fill:#2F4F4F,stroke:#fff,color:#fff
 ```
 
-## 2. Detailed Workflow Sequence
+## 4. Detailed Workflow Sequence
 
 This sequence diagram demonstrates how the Platform Engineering system leverages the Model Context Protocol (MCP) to create a structured interaction between LLMs and platform tooling. The workflow follows MCP's key architectural principles:
 <br><br>
@@ -134,7 +282,35 @@ sequenceDiagram
 
 This approach ensures standardization while maintaining MCP's security principles and keeping humans in control of critical platform engineering decisions.
 
-## 4. Configuration Repository
+## 5. MCP Components and Their Value
+
+### 5.1 MCP Prompts: Guided Workflows
+
+MCP Prompts are essential for providing structured guidance to both the user and the LLM:
+
+1. **Value in Platform Engineering**:
+   - **Workflow Standardization**: Prompts define consistent workflows across the organization
+   - **Guided Experience**: Step-by-step templates guide users through complex processes
+   - **Context Preservation**: Maintain context throughout multi-step processes
+   - **Discoverability**: Prompts appear as slash commands in supporting clients
+
+2. **Implementation Approach**:
+   - Define high-level workflow prompts that outline the entire process
+   - Include dynamic parameters based on user requirements
+   - Structure prompts as conversations that guide both user and LLM
+   - Design prompts to anticipate common decision points
+
+### 5.2 MCP Tools: Executable Capabilities
+
+MCP Tools enable concrete actions and information retrieval:
+
+1. **Value in Platform Engineering**:
+   - **Action Execution**: Perform operations on GitHub, Azure, and other systems
+   - **Information Retrieval**: Fetch available templates and configuration options
+   - **Standardization**: Ensure operations follow organization standards
+   - **Security**: Properly scoped tools with parameter validation
+
+## 6. Configuration Repository
 
 The PE MCP Server reads from a central configuration repository that contains YAML files defining available templates such as: GitHub Repository templates, GitHub Actions workflow templates or Azure Deployment Environment templates:
 
@@ -177,74 +353,7 @@ templates:
         - prometheus-monitoring
 ```
 
-## 3. MCP Components and Their Value
-
-### 3.1 MCP Prompts: Guided Workflows
-
-MCP Prompts are essential for providing structured guidance to both the user and the LLM:
-
-1. **Value in Platform Engineering**:
-   - **Workflow Standardization**: Prompts define consistent workflows across the organization
-   - **Guided Experience**: Step-by-step templates guide users through complex processes
-   - **Context Preservation**: Maintain context throughout multi-step processes
-   - **Discoverability**: Prompts appear as slash commands in supporting clients
-
-2. **Implementation Approach**:
-   - Define high-level workflow prompts that outline the entire process
-   - Include dynamic parameters based on user requirements
-   - Structure prompts as conversations that guide both user and LLM
-   - Design prompts to anticipate common decision points
-
-### 3.2 MCP Tools: Executable Capabilities
-
-MCP Tools enable concrete actions and information retrieval:
-
-1. **Value in Platform Engineering**:
-   - **Action Execution**: Perform operations on GitHub, Azure, and other systems
-   - **Information Retrieval**: Fetch available templates and configuration options
-   - **Standardization**: Ensure operations follow organization standards
-   - **Security**: Properly scoped tools with parameter validation
-
-## 4. Use Cases
-
-### 4.1 New Project Creation
-
-**Value Proposition**: Automate the creation of standardized, compliant projects in minutes instead of hours.
-
-**Workflow**:
-1. Developer expresses intent to create a new project
-2. LLM gathers requirements through natural conversation
-3. PE MCP Server provides appropriate templates based on requirements
-4. LLM recommends best template and explains reasoning
-5. Upon confirmation, GitHub MCP creates repository from template
-6. LLM recommends appropriate CI/CD workflows from PE MCP Server
-7. GitHub MCP configures workflows
-8. LLM offers to provision test environment
-9. Azure MCP provisions resources if requested
-
-### 4.2 Environment Provisioning
-
-**Value Proposition**: Standardize environment creation across teams with built-in compliance and best practices.
-
-**Workflow**:
-1. Developer requests environment for existing project
-2. LLM determines project type and requirements
-3. PE MCP Server provides appropriate environment templates
-4. LLM recommends best template and explains reasoning
-5. Upon confirmation, Azure MCP provisions resources
-6. LLM summarizes provisioned resources and provides access information
-
-## 5. Conclusion
-
-The MCP-based Platform Engineering architecture offers a powerful way to combine AI-driven assistance with standardized platform operations. By leveraging MCP Prompts for workflow guidance and MCP Tools for concrete actions, while keeping humans in the loop for critical decisions, this approach balances automation with control.
-
-The result is a platform that:
-- Reduces the cognitive load on developers
-- Enforces organizational standards and best practices
-- Makes platform capabilities accessible through natural language
-- Provides predictable, repeatable outcomes
-
-## Contributing
+## 7. Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
@@ -258,7 +367,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## Trademarks
+## 8. Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
 trademarks or logos is subject to and must follow 
