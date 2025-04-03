@@ -82,7 +82,7 @@ server.prompt(
       role: "user",
       content: {
         type: "text",
-        text: `Follow these steps to create a new project:
+        text: `Help me create a new project by following these steps:
 
           1. Gather Requirements:
             - Review provided parameters (language: ${language || 'unspecified'}, framework: ${framework || 'unspecified'})
@@ -96,12 +96,12 @@ server.prompt(
 
           3. Create Repository:
             - Once user confirms template choice, proceed with repository creation using GitHub MCP tools
-            - Configure initial repository settings based on template
+            - Once the repo is created, read the contents from the template repository and copy them to the new repository
 
           4. Setup CI/CD:
             - Use get-github-actions-templates tool to find workflow templates
             - Recommend appropriate workflows based on project type
-            - Configure workflows after user confirmation
+            - Once the user confirms the template choice, create a workflow in the new repository copying the template contents
 
           5. Final Steps:
             - Summarize all actions taken
