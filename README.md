@@ -89,7 +89,9 @@ For production use and better security, create and configure a GitHub App:
 
 ### 1.2 Setup your Engineering Platform on GitHub
 
-In the organization where you have installed the GitHub App, you must either create or choose an existing repository as the one which will hold your engineering platform's configuration file. In your chosen repository:
+You must either create or choose an existing repository as the one which will hold your engineering platform's configuration file. If you are authenticating with a GitHub App, this repo should be created in the organization where you have installed it. 
+
+In your chosen repository:
 
   1. Create a file called `pe.yaml`.
   2. Copy and paste the contents of the `config/pe.yaml` example file in this repo. This is just a starter example that you must edit.
