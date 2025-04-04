@@ -1,20 +1,45 @@
-import { App } from "octokit";
+import { App, Octokit } from "octokit";
 import { RequestError } from "octokit";
 
 export class GitHubClient {
-  private app: App;
-  private installationId: number;
+  private app?: App;
+  private pat?: string;
+  private installationId?: number;
 
-  constructor(appId: string, privateKey: string, installationId: string) {
-    if (!appId || !privateKey || !installationId) {
-      throw new Error('Missing required GitHub configuration');
+  constructor(options: {
+    pat?: string;
+    appId?: string;
+    privateKey?: string;
+    installationId?: string;
+  }) {
+    // If PAT is provided, use it
+    if (options.pat) {
+      this.pat = options.pat;
+      return;
+    }
+
+    // Otherwise, try GitHub App authentication
+    if (!options.appId || !options.privateKey || !options.installationId) {
+      throw new Error('Either GITHUB_PAT or all GitHub App credentials (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID) must be provided');
     }
 
     this.app = new App({
-      appId,
-      privateKey,
+      appId: options.appId,
+      privateKey: options.privateKey,
     });
-    this.installationId = Number(installationId);
+    this.installationId = Number(options.installationId);
+  }
+
+  private async getOctokit(): Promise<Octokit> {
+    if (this.pat) {
+      return new Octokit({ auth: this.pat });
+    }
+
+    if (!this.app || !this.installationId) {
+      throw new Error('No authentication method available');
+    }
+
+    return await this.app.getInstallationOctokit(this.installationId);
   }
 
   async createRepositoryFromTemplate(params: {
@@ -27,7 +52,7 @@ export class GitHubClient {
     include_all_branches?: boolean;
   }) {
     try {
-      const octokit = await this.app.getInstallationOctokit(this.installationId);
+      const octokit = await this.getOctokit();
       
       const response = await octokit.request('POST /repos/{template_owner}/{template_repo}/generate', {
         template_owner: params.template_owner,
@@ -53,7 +78,7 @@ export class GitHubClient {
 
   async getConfigFile(owner: string, repo: string, path: string): Promise<string> {
     try {
-      const octokit = await this.app.getInstallationOctokit(this.installationId);
+      const octokit = await this.getOctokit();
       
       const response = await octokit.rest.repos.getContent({
         owner,
