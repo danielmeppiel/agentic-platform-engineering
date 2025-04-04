@@ -12,6 +12,7 @@ const GITHUB_PRIVATE_KEY: string = process.env.GITHUB_PRIVATE_KEY || '';
 const GITHUB_INSTALLATION_ID: string = process.env.GITHUB_INSTALLATION_ID || '';
 const PE_CONFIG_REPO: string = process.env.PE_CONFIG_REPO || ''; // format: owner/repo
 const PE_CONFIG_PATH: string = process.env.PE_CONFIG_PATH || 'pe.yaml';
+const DEVCENTER_NAME = process.env.DEVCENTER_NAME || '';
 
 // Validate required environment variables
 if (!PE_CONFIG_REPO) {
@@ -309,6 +310,54 @@ USE WHEN:
         content: [{
           type: "text",
           text: `Error creating repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Get environment definitions from Azure DevCenter
+server.tool("get-azd-environment-defs",
+  `List environment definitions available in an Azure DevCenter project.
+
+PURPOSE:
+- List available environment definitions in a DevCenter project
+- Access standardized environment templates
+
+CAPABILITIES:
+- Lists environment definitions for a specific project
+- Returns detailed template information
+
+LIMITATIONS:
+- Requires project name
+- Requires appropriate Azure permissions
+- Must have Azure CLI and DevCenter extension installed
+
+USE WHEN:
+- Setting up new development environments
+- Exploring available environment templates`, {
+    projectName: z.string()
+  },
+  async (params) => {
+    try {
+      const command = `az devcenter dev environment-definition list --dev-center-name "${DEVCENTER_NAME}" --project-name "${params.projectName}"`;
+      const { execSync } = await import('child_process');
+      const result = execSync(command).toString();
+      const parsed = JSON.parse(result);
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(parsed, null, 2)
+        }]
+      };
+    } catch (error) {
+      console.error('Error retrieving environment definitions:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error retrieving environment definitions: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };

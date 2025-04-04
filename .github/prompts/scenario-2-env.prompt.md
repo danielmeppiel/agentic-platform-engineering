@@ -1,52 +1,52 @@
-# Environment Provisioning Scenario
+# Environment Provisioning with Azure Developer CLI
 
-Help me provision a deployment environment by following these steps:
+Help me provision a deployment environment using Azure Developer CLI (azd) by following these steps:
 
 1. Gather Environment Requirements:
    - Repository name: ${REPO_NAME}
-   - Environment type: ${ENV_TYPE} (dev/staging/prod)
+   - Environment name: ${ENV_NAME} (dev/test/prod)
    - Cloud provider: Azure
    - Region: ${AZURE_REGION}
-   - Resource requirements:
-     - Compute: ${COMPUTE_TYPE} (AKS/VM/Container Apps)
-     - Database: ${DATABASE_TYPE} (if needed)
-     - Storage: ${STORAGE_TYPE} (if needed)
+   - Workload type: ${WORKLOAD_TYPE} (containerized/serverless/web)
 
-2. Find Infrastructure Template:
-   - Use get-iac-templates tool to find IaC templates
+2. Select Azure Developer Template:
+   - Use azd template catalog to find appropriate template
    - Filter by:
-     - Cloud provider: Azure
-     - Infrastructure type: ${COMPUTE_TYPE}
-     - Compliance requirements: ${COMPLIANCE_REQS}
-   - Review and recommend best match based on requirements
+     - Workload type: ${WORKLOAD_TYPE}
+     - Application type: ${APP_TYPE} (e.g., Node.js, Python, .NET)
+     - Features needed: ${FEATURES} (e.g., monitoring, database, storage)
 
-3. Set Up Infrastructure:
-   - Create new infrastructure branch in repository
-   - Copy selected template to repository
-   - Update template variables with environment specifics
-   - Set up state storage for Terraform/Bicep
-   - Configure Azure service principal access
+3. Initialize Environment:
+   - Initialize new azd project with selected template
+   - Configure environment settings:
+     - Environment name
+     - Azure region
+     - Resource naming convention
+   - Set up Azure authentication
+   - Configure state management (automatic with azd)
 
-4. Configure CD Workflow:
-   - Use get-github-actions-templates to find deployment workflow
-   - Set up environment secrets in GitHub:
-     - Azure credentials
-     - Environment-specific configs
-   - Create deployment workflow with:
+4. Configure CI/CD:
+   - Set up a GitHub environment for the GitHub repo
+   - Configure Azure credentials with OIDC
+   - Set up environment protection rules on the GitHub Environment
+   - Add environment secrets:
+     - Azure credentials (managed by OIDC)
+     - Environment-specific variables
+   - Create deployment GitHub Actions workflow with:
      - Infrastructure validation
-     - Security checks
+     - Security scanning
      - Deployment approvals
-     - Post-deployment tests
+     - Post-deployment checks
 
-5. Initial Deployment:
-   - Run infrastructure deployment
+5. Provision and Deploy:
+   - Run azd provision command
+   - Execute initial deployment
    - Verify resource creation
-   - Configure monitoring and alerting
-   - Set up logging
+   - Enable monitoring and logging (included in template)
 
 6. Documentation:
    - Document environment access procedures
-   - List configured resources
+   - List provisioned resources
+   - Include azd commands for common operations
 
-
-You must ask the user to provide all templating variables when needed, which are hinted with the syntax ${VARIABLE}
+You must ask the user to provide all templating variables when needed, which are indicated with the syntax ${VARIABLE}
