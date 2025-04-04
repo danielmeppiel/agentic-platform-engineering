@@ -5,20 +5,32 @@ import * as yaml from 'js-yaml';
 import { PEConfig } from './types.js';
 import { GitHubClient } from './github.js';
 
-// Required environment variables
+// GitHub authentication environment variables
+const GITHUB_PAT: string = process.env.GITHUB_PAT || '';
 const GITHUB_APP_ID: string = process.env.GITHUB_APP_ID || '';
 const GITHUB_PRIVATE_KEY: string = process.env.GITHUB_PRIVATE_KEY || '';
 const GITHUB_INSTALLATION_ID: string = process.env.GITHUB_INSTALLATION_ID || '';
 const PE_CONFIG_REPO: string = process.env.PE_CONFIG_REPO || ''; // format: owner/repo
 const PE_CONFIG_PATH: string = process.env.PE_CONFIG_PATH || 'pe.yaml';
 
-if (!GITHUB_APP_ID || !GITHUB_PRIVATE_KEY || !GITHUB_INSTALLATION_ID || !PE_CONFIG_REPO) {
-  console.error('Missing required environment variables: GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID, PE_CONFIG_REPO');
+// Validate required environment variables
+if (!PE_CONFIG_REPO) {
+  console.error('Missing required environment variable: PE_CONFIG_REPO');
   process.exit(1);
 }
 
-// Initialize GitHub client
-const githubClient = new GitHubClient(GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID);
+if (!GITHUB_PAT && (!GITHUB_APP_ID || !GITHUB_PRIVATE_KEY || !GITHUB_INSTALLATION_ID)) {
+  console.error('Missing required environment variables: either GITHUB_PAT or all GitHub App credentials (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID) must be provided');
+  process.exit(1);
+}
+
+// Initialize GitHub client with either PAT or GitHub App credentials
+const githubClient = new GitHubClient({
+  pat: GITHUB_PAT || undefined,
+  appId: GITHUB_APP_ID,
+  privateKey: GITHUB_PRIVATE_KEY,
+  installationId: GITHUB_INSTALLATION_ID,
+});
 
 // Load PE configuration from GitHub repository
 async function loadPEConfig(): Promise<PEConfig> {

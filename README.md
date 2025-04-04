@@ -21,9 +21,33 @@ A Platform Engineering MCP Server that orchestrates end-to-end platform engineer
 
 ### 1.1 Setup GitHub Authentication
 
-This MCP Server authenticates with GitHub using a GitHub App that you must create and install in a target GitHub Organization. This Organization is the one that contains your Engineering Platform configuration and most of your templates. 
+This MCP Server supports two authentication methods with GitHub:
+1. GitHub Personal Access Token (PAT) - Simpler setup, suitable for testing and personal use
+2. GitHub App - More secure, recommended for production use and organization-wide deployment
 
-Follow these steps to set up GitHub App authentication:
+#### Option 1: GitHub Personal Access Token (PAT)
+
+> [!WARNING] 
+> Use a PAT for testing and development purposes only. For production use, authenticate with a GitHub App.
+
+The simplest way to get started is using a GitHub Personal Access Token:
+
+1. Create a new PAT in GitHub:
+   - Go to your GitHub Settings
+   - Navigate to "Developer settings" > "Personal access tokens" > "Tokens (classic)"
+   - Click "Generate new token (classic)"
+   - Grant the following permissions:
+     - `repo` (Full control of private repositories)
+     - `workflow` (Update GitHub Action workflows)
+   - Copy the generated token
+
+2. Set the token in your environment:
+   - Save the token as `GITHUB_PAT` environment variable
+   - This is the only authentication variable you need when using PAT
+
+#### Option 2: GitHub App (Recommended for Organizations)
+
+For production use and better security, create and configure a GitHub App:
 
 1. Create a new GitHub App in your Organization:
    - Go to your Organization's Settings
@@ -65,7 +89,9 @@ Follow these steps to set up GitHub App authentication:
 
 ### 1.2 Setup your Engineering Platform on GitHub
 
-In the organization where you have installed the GitHub App, you must either create or choose an existing repository as the one which will hold your engineering platform's configuration file. In your chosen repository:
+You must either create or choose an existing repository as the one which will hold your engineering platform's configuration file. If you are authenticating with a GitHub App, this repo should be created in the organization where you have installed it. 
+
+In your chosen repository:
 
   1. Create a file called `pe.yaml`.
   2. Copy and paste the contents of the `config/pe.yaml` example file in this repo. This is just a starter example that you must edit.
@@ -74,26 +100,49 @@ In the organization where you have installed the GitHub App, you must either cre
 
 ### 1.3 Setup the MCP Server in VSCode Insiders
 
-In VSCode Insiders, add a new MCP Server to your User Settings JSON file and make sure to edit the values between "<>" brackets:
+In VSCode Insiders, add a new MCP Server to your User Settings JSON file. You can use either authentication method:
 
-  ```json
-  "mcp": {
-      "servers": {
-        "platform-eng-copilot": {
-          "command": "node",
-          "args": [
-              "<ABSOLUTE_PATH>/platform-eng-copilot/dist/server.js"
-          ],
-          "env": {
-            "GITHUB_APP_ID": "<YOUR_GITHUB_APP_ID>",
-            "GITHUB_PRIVATE_KEY":"<YOUR_GITHUB_APP_PRIVATE_KEY_WITH_NO_BREAKLINES>",
-            "GITHUB_INSTALLATION_ID":"<YOUR_GITHUB_APP_INSTALLATION_ID>",
-            "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>",
-          }
+#### Option 1: Using GitHub Personal Access Token
+
+```json
+"mcp": {
+    "servers": {
+      "platform-eng-copilot": {
+        "command": "node",
+        "args": [
+            "<ABSOLUTE_PATH>/platform-eng-copilot/dist/server.js"
+        ],
+        "env": {
+          "GITHUB_PAT": "<YOUR_GITHUB_PERSONAL_ACCESS_TOKEN>",
+          "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>"
         }
-     }
-  }
-  ```
+      }
+   }
+}
+```
+
+#### Option 2: Using GitHub App Authentication
+
+```json
+"mcp": {
+    "servers": {
+      "platform-eng-copilot": {
+        "command": "node",
+        "args": [
+            "<ABSOLUTE_PATH>/platform-eng-copilot/dist/server.js"
+        ],
+        "env": {
+          "GITHUB_APP_ID": "<YOUR_GITHUB_APP_ID>",
+          "GITHUB_PRIVATE_KEY":"<YOUR_GITHUB_APP_PRIVATE_KEY_WITH_NO_BREAKLINES>",
+          "GITHUB_INSTALLATION_ID":"<YOUR_GITHUB_APP_INSTALLATION_ID>",
+          "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>"
+        }
+      }
+   }
+}
+```
+
+Make sure to replace all values between "<>" brackets with your actual configuration values. Only configure one authentication method - either PAT or GitHub App credentials.
 
 ### 1.4 (Optional) Inspecting locally with MCP Inspector
 
