@@ -25,7 +25,7 @@ Help me provision a deployment environment using Azure Developer CLI (azd) by fo
    - Set up Azure authentication
    - Configure state management (automatic with azd)
 
-4. Configure CI/CD:
+4. Configure CD:
    - Set up a GitHub environment for the GitHub repo
    - Configure Azure credentials with OIDC
    - Set up environment protection rules on the GitHub Environment

@@ -318,7 +318,7 @@ USE WHEN:
 );
 
 // Get environment definitions from Azure DevCenter
-server.tool("get-azd-environment-defs",
+server.tool("get-ade-defs",
   `List environment definitions available in an Azure DevCenter project.
 
 PURPOSE:
@@ -364,6 +364,95 @@ USE WHEN:
     }
   }
 );
+
+// Tool 4: Create an Azure Deployment Environment (ADE)
+server.tool("create-ade-env",
+  `Create an Azure Deployment Environment (ADE) and return resource group details.
+
+PURPOSE:
+- Create consistent deployment environments based on existing IaC templates
+
+CAPABILITIES:
+- Creates a new environment in Azure based on a template in the DevCenter project
+- Returns the resource group and subscription information
+- Enables infrastructure provisioning via templates
+
+LIMITATIONS:
+- Requires valid project, environment type, and DevCenter name
+- Environment name must be unique within the project
+
+USE WHEN:
+- Setting up new deployment environments
+- Creating ephemeral testing environments
+- Provisioning standardized infrastructure
+- Implementing infrastructure as code based on enterprise approved templates`, {
+    projectName: z.string(),
+    envName: z.string(),
+    envType: z.string(),
+    envDefName: z.string(),
+    catalogName: z.string().optional(),
+  },
+  async (params) => {
+    try {
+      const { execSync } = await import('child_process');
+      
+      const envDefName = params.envDefName || params.envType;
+      
+      console.error(`Creating ADE environment: ${params.envName}`);
+      
+      // Create the deployment environment
+      let createCommand = `az devcenter dev environment create \
+        --name "${params.envName}" \
+        --environment-type "${params.envType}" \
+        --dev-center "${DEVCENTER_NAME}" \
+        --project "${params.projectName}" \
+        --environment-definition-name "${envDefName}" \
+        --parameters '{ "name": "${params.envName}" }' \
+        --only-show-errors`;
+
+      // Add catalog name flag only if provided
+      if (params.catalogName) {
+        createCommand += ` --catalog-name "${params.catalogName}"`;
+      }
+      
+      execSync(createCommand);
+      
+      console.error("Environment created, retrieving details...");
+      
+      // Get the environment details to extract resource group info
+      const showCommand = `az devcenter dev environment show \
+        --name "${params.envName}" \
+        --dev-center "${DEVCENTER_NAME}" \
+        --project "${params.projectName}" \
+        --only-show-errors --query resourceGroupId --output tsv`;
+      
+      const environment_rg = execSync(showCommand).toString().trim();
+      
+      // Extract resource group and subscription information
+      const environment_group = environment_rg.split('/').pop() || '';
+      const environment_sub = environment_rg.split('/resourceGroups')[0].split('/').pop() || '';
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully created environment "${params.envName}"\n\nEnvironment Details:\n- Resource Group ID: ${environment_rg}\n- Resource Group: ${environment_group}\n- Subscription: ${environment_sub}`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating ADE environment:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating ADE environment: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Start the server
+// ...existing code...
 
 // Start the server
 async function main() {
