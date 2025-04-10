@@ -160,7 +160,8 @@ export class GitHubClient {
     value: string;
   }) {
     try {
-      const sodium = await import('libsodium-wrappers');
+      // Import and properly initialize sodium using ES module dynamic import
+      const sodium = await import('libsodium-wrappers').then(module => module.default || module);
       await sodium.ready;
 
       // Get the public key for the environment

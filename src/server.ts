@@ -13,9 +13,6 @@ const GITHUB_PRIVATE_KEY: string = process.env.GITHUB_PRIVATE_KEY || '';
 const GITHUB_INSTALLATION_ID: string = process.env.GITHUB_INSTALLATION_ID || '';
 const PE_CONFIG_REPO: string = process.env.PE_CONFIG_REPO || ''; // format: owner/repo
 const PE_CONFIG_PATH: string = process.env.PE_CONFIG_PATH || 'pe.yaml';
-const DEVCENTER_NAME = process.env.DEVCENTER_NAME || '';
-const DEVCENTER_PROJECT = process.env.DEVCENTER_PROJECT || '';
-const DEVCENTER_CATALOG = process.env.DEVCENTER_CATALOG || '';
 
 // Validate required environment variables
 if (!PE_CONFIG_REPO) {
@@ -36,11 +33,24 @@ const githubClient = new GitHubClient({
   installationId: GITHUB_INSTALLATION_ID,
 });
 
+// Environment variables for Azure authentication
+const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID || '';
+const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID || '';
+const AZURE_CLIENT_ID = process.env.AZURE_CLIENT_ID || '';
+const AZURE_CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || '';
+const DEVCENTER_NAME = process.env.DEVCENTER_NAME || '';
+const DEVCENTER_PROJECT = process.env.DEVCENTER_PROJECT || '';
+const DEVCENTER_CATALOG = process.env.DEVCENTER_CATALOG || '';
+
 // Initialize Azure client
 const azureClient = new AzureClient({
   devCenterName: DEVCENTER_NAME,
   devCenterProject: DEVCENTER_PROJECT,
-  devCenterCatalog: DEVCENTER_CATALOG
+  devCenterCatalog: DEVCENTER_CATALOG,
+  subscriptionId: AZURE_SUBSCRIPTION_ID,
+  tenantId: AZURE_TENANT_ID,
+  clientId: AZURE_CLIENT_ID,
+  clientSecret: AZURE_CLIENT_SECRET
 });
 
 // Load PE configuration from GitHub repository
@@ -633,10 +643,9 @@ server.tool("create-federated-credential",
 PURPOSE:
 - Set up secure authentication between GitHub Actions and Azure
 - Establish OpenID Connect (OIDC) trust relationship for secure deployments
-- Second step in configuring GitHub Actions to deploy to Azure environments
 
 CAPABILITIES:
-- Finds Microsoft Entra application by display name pattern [Project]-[EnvType]
+- Finds Microsoft Entra application by display name pattern [DevCenter Project]-[EnvType]
 - Creates federated identity credential linking the application to a GitHub repository
 - Configures OIDC subject claims for secure token-based authentication
 
@@ -837,6 +846,15 @@ USE WHEN:
 
 // Start the server
 async function main() {
+  // Ensure Azure authentication before starting
+  try {
+    await azureClient.ensureAuthenticated();
+    console.error('Successfully authenticated with Azure');
+  } catch (error) {
+    console.error('Failed to authenticate with Azure:', error);
+    process.exit(1);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

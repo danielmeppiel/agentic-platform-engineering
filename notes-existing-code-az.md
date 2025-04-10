@@ -62,20 +62,19 @@ environment_sub=${environment_sub##*/}
 
     The user should validate and check the proposed deployment logic (GH Actions workflow AND/OR az deployment - see step 7).
 
-7. Deploy to it. Use az deployment and the target resource_group and subscription from step 5. The AI can figure out how to deploy based on step 6 information
+7. Let's prepare to deploy to it. We will need to setup OIDC to let GitHub Actions connect to Azure. For that, we need to create a federated credential with the create-federated-credential for the chosen environment type in our devcenter project. This requires for a MS Entra Application to exist already for that environment type (https://learn.microsoft.com/en-us/azure/deployment-environments/tutorial-deploy-environments-in-cicd-github#5-configure-deployment-identities)  
 
-8. Configure a GitHub Environment to model the ADE and put the secrets/variables there
-https://learn.microsoft.com/en-us/azure/deployment-environments/tutorial-deploy-environments-in-cicd-github 
+Use az deployment and the target resource_group and subscription from step 5. The AI can figure out how to deploy based on step 6 information
 
-9. Knowing what the ADE template deploys in terms of IAC (tell me what it deploys, step 6) generate a CD workflow pointing to the above GitHub Env, which creates the ADE environment AND deploys to it
+8. Create a new GitHub Environment to model the ADE with the same name as the environment type chosen. 
 
-    Example: https://github.com/Azure-Samples/deployment-environments-cicd-tutorial/blob/main/.github/workflows/environment_create.yml
+9. Add the AZURE_CLIENT_ID recovered in step 7 as a secret to the newly created environment. 
 
-    Use steps 1 to 6 to write the CD workflow. 
+10. Knowing what the ADE template deploys in terms of IAC (tell me what it deploys, step 6) generate a CD workflow pointing to the above GitHub Env, which deploys to the resources created in our ADE environment. The resource group and subscription where obtained in step 5.
 
-10. Configure GitHub Actions secrets for Azure OIDC
+Example: https://github.com/Azure-Samples/deployment-environments-cicd-tutorial/blob/main/.github/workflows/environment_create.yml
 
-11. Deploy (trigger CD Workflow)
+11. Deploy (trigger GitHub Actions CD Workflow on GitHub)
 
 12. Documentation
    - Document environment access procedures
