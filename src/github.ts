@@ -98,4 +98,110 @@ export class GitHubClient {
       throw error;
     }
   }
+
+  async createDeploymentEnvironment(params: {
+    owner: string;
+    repo: string;
+    environment_name: string;
+    wait_timer?: number;
+    reviewers?: Array<{ type: 'User' | 'Team'; id: number; }>;
+    deployment_branch_policy?: { protected_branches: boolean; custom_branch_policies: boolean; };
+  }) {
+    try {
+      const octokit = await this.getOctokit();
+      
+      const response = await octokit.request('PUT /repos/{owner}/{repo}/environments/{environment_name}', {
+        owner: params.owner,
+        repo: params.repo,
+        environment_name: params.environment_name,
+        wait_timer: params.wait_timer,
+        reviewers: params.reviewers,
+        deployment_branch_policy: params.deployment_branch_policy,
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+
+      return {
+        name: response.data.name,
+        url: response.data.html_url,
+        createdAt: response.data.created_at,
+        updatedAt: response.data.updated_at
+      };
+    } catch (error) {
+      if (error instanceof RequestError) {
+        throw new Error(`GitHub API error: ${error.message} (Status: ${error.status})`);
+      }
+      throw error;
+    }
+  }
+
+  private async getEnvironmentPublicKey(owner: string, repo: string, environment_name: string): Promise<{ key: string; key_id: string }> {
+    const octokit = await this.getOctokit();
+    const response = await octokit.request('GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key', {
+      owner,
+      repo,
+      environment_name,
+      headers: {
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    });
+    return {
+      key: response.data.key,
+      key_id: response.data.key_id
+    };
+  }
+
+  async createEnvironmentSecret(params: {
+    owner: string;
+    repo: string;
+    environment_name: string;
+    secret_name: string;
+    value: string;
+  }) {
+    try {
+      const sodium = await import('libsodium-wrappers');
+      await sodium.ready;
+
+      // Get the public key for the environment
+      const { key, key_id } = await this.getEnvironmentPublicKey(
+        params.owner,
+        params.repo,
+        params.environment_name
+      );
+
+      // Convert Secret & Base64 key to Uint8Arrays
+      const binkey = sodium.from_base64(key, sodium.base64_variants.ORIGINAL);
+      const binsec = sodium.from_string(params.value);
+
+      // Encrypt the secret using LibSodium
+      const encBytes = sodium.crypto_box_seal(binsec, binkey);
+      const encrypted_value = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+
+      const octokit = await this.getOctokit();
+      
+      // Create/update the secret
+      const response = await octokit.request('PUT /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}', {
+        owner: params.owner,
+        repo: params.repo,
+        environment_name: params.environment_name,
+        secret_name: params.secret_name,
+        encrypted_value,
+        key_id,
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+
+      return {
+        status: response.status === 201 ? 'created' : 'updated',
+        url: response.url
+      };
+    } catch (error) {
+      if (error instanceof RequestError) {
+        throw new Error(`GitHub API error: ${error.message} (Status: ${error.status})`);
+      }
+      throw error;
+    }
+  }
 }

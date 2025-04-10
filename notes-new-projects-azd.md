@@ -61,7 +61,7 @@ Flow should probably be:
     The ADE template should be AZD friendly, read more here https://learn.microsoft.com/en-us/azure/deployment-environments/concept-azure-developer-cli-with-deployment-environments#azd-compatible-catalogs
     It will "merge" source with local repo source, may override stuff, so it should contain just the CD workflow for the type of App and perhaps some other minor artifacts
     
-    It initializes the project locally and ties it to an ADE template
+    It initializes the project locally, including source code from the azd template, and the infra from the ADE template
 
     This could be do with --no-prompt and inject template:
 
