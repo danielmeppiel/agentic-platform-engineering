@@ -22,7 +22,7 @@ Ask the user to validate and check the proposed deployment logic (which will be 
 
 7. The returned Service Principal above has to be granted the Contributor role to our ADE deployment environment's resource group, using the resourceGroupId from step 4. This way, the SP will be able to deploy to our environment.
 
-8. Create a new GitHub Environment to model the ADE with the same name as the environment type chosen. 
+8. Create a new GitHub Environment to model the ADE with the same name as the environment type chosen. Beware: we need the right organization name where the repository lives. Get this by using git in the terminal or a GitHub MCP tool, and then create the GitHub Environment. 
 
 9. Add the AZURE_CLIENT_ID recovered in step 6 as a secret to the newly created GitHub environment. Do the same with the AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID (if you miss any of these two, ask the user to provide them, never invent the values).
 
