@@ -8,7 +8,7 @@ Help me provision a deployment environment by following these steps:
    - Cloud provider: Azure
    - Workload type: ${WORKLOAD_TYPE} (containerized/serverless/web or anything else)
 
-2. Search and propose an Azure Developer Environment (ADE) environment definitions that best matches the requirements of the application. To search for definitions, use the get-ade-defs tool. 
+2. Search and propose an Azure Developer Environment (ADE) environment definitions that best matches the requirements of the application. To search for definitions, use the get-ade-defs tool. Do NOT pass a project in, the defaults will be handled by the tool.
 
 3. Ask the user to confirm the proposed ADE definition. Once the user confirms the template, get the details of the template with the get-ade-def tool. This allows checking if there are any required parameters that need to be passed later on when creating the environment with this definition, and if it is the case, ask the user for the value of these parameters.  
 
@@ -22,7 +22,7 @@ Ask the user to validate and check the proposed deployment logic (which will be 
 
 7. The returned Service Principal above has to be granted the Contributor role to our ADE deployment environment's resource group, using the resourceGroupId from step 4. This way, the SP will be able to deploy to our environment.
 
-8. Create a new GitHub Environment to model the ADE with the same name as the environment type chosen. Beware: we need the right organization name where the repository lives. Get this by using git in the terminal or a GitHub MCP tool, and then create the GitHub Environment. 
+8. Create a new GitHub Environment to model the ADE with the same name as the environment type chosen. Beware: we need the right organization name where the repository lives. Get this by using git in the terminal or a GitHub MCP tool, and then create the GitHub Environment. Make sure that the GitHub Environment name starts with uppercase! 
 
 9. Add the AZURE_CLIENT_ID recovered in step 6 as a secret to the newly created GitHub environment. Do the same with the AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID (if you miss any of these two, ask the user to provide them, never invent the values).
 
