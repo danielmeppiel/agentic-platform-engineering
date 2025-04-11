@@ -287,7 +287,7 @@ export class AzureClient {
     }
     
     const appId = appData.id;
-    const credName = `ADE${envType}`;
+    const credName = `ADE-${params.orgName}-${params.repoName}-${envType}`;
     const credSubject = `repo:${params.orgName}/${params.repoName}:environment:${envType}`;
     
     execSync(`az rest --method POST \
