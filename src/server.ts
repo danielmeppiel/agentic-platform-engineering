@@ -580,10 +580,12 @@ CAPABILITIES:
 - Creates a service principal for the application
 - Assigns Reader role on the project level
 - Assigns Deployment Environments User role for the specific environment type
+- Assigns Contributor role to the specified deployment resource group
 - Returns necessary IDs for subsequent federated credential creation
 
 PARAMETERS:
 - envType (required): Environment type (e.g., 'Dev', 'Test', 'Prod')
+- deploymentRG (required): The resource group where the Service Principal needs Contributor access
 - projectName (optional): Project name to use in the app display name (defaults to DEVCENTER_PROJECT env var)
 
 LIMITATIONS:
@@ -596,6 +598,7 @@ USE WHEN:
 - Creating identity for new environment types
 - Establishing secure deployment pipelines with Azure`, {
     envType: z.string(),
+    deploymentRG: z.string(),
     projectName: z.string().optional(),
   },
   async (params) => {
@@ -612,6 +615,11 @@ USE WHEN:
                 - Application (Client) ID: ${result.appId}
                 - Application Object ID: ${result.applicationId}
                 - Service Principal ID: ${result.servicePrincipalId}
+
+                Role Assignments:
+                - Reader role on DevCenter project scope
+                - Deployment Environments User role on environment type scope
+                - Contributor role on resource group: ${params.deploymentRG}
 
                 To use these values in subsequent commands, you can set these environment variables:
                 \`\`\`bash

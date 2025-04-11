@@ -151,6 +151,7 @@ export class AzureClient {
   async createEntraAppAndSP(params: {
     envType: string;
     projectName?: string;
+    deploymentRG: string;
   }): Promise<{
     appId: string;
     applicationId: string;
@@ -242,6 +243,16 @@ export class AzureClient {
       --assignee-principal-type ServicePrincipal`;
     execSync(envRoleCommand);
     console.error(`Successfully assigned Deployment Environments User role`);
+
+    // Add Contributor role to the specific resource group
+    console.error(`Assigning Contributor role to Service Principal for resource group: ${params.deploymentRG}...`);
+    const rgRoleCommand = `az role assignment create \
+      --scope "/subscriptions/${this.subscriptionId}/resourceGroups/${params.deploymentRG}" \
+      --role "Contributor" \
+      --assignee-object-id "${servicePrincipalId}" \
+      --assignee-principal-type ServicePrincipal`;
+    execSync(rgRoleCommand);
+    console.error(`Successfully assigned Contributor role to resource group: ${params.deploymentRG}`);
     
     return {
       appId,
