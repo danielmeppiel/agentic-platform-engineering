@@ -585,7 +585,7 @@ CAPABILITIES:
 
 PARAMETERS:
 - envType (required): Environment type (e.g., 'Dev', 'Test', 'Prod')
-- deploymentRG (required): The resource group where the Service Principal needs Contributor access
+- deploymentRG (required): The resource group name (only the name!) where the Service Principal needs Contributor access
 - projectName (optional): Project name to use in the app display name (defaults to DEVCENTER_PROJECT env var)
 
 LIMITATIONS:
@@ -613,7 +613,7 @@ USE WHEN:
                 Application Details:
                 - Display Name: ${result.displayName}
                 - Application (Client) ID: ${result.appId}
-                - Application Object ID: ${result.applicationId}
+                - Application Object ID: ${result.appObjectId}
                 - Service Principal ID: ${result.servicePrincipalId}
 
                 Role Assignments:
@@ -624,7 +624,7 @@ USE WHEN:
                 To use these values in subsequent commands, you can set these environment variables:
                 \`\`\`bash
                 ${params.envType.toUpperCase()}_AZURE_CLIENT_ID=${result.appId}
-                ${params.envType.toUpperCase()}_APPLICATION_ID=${result.applicationId}
+                ${params.envType.toUpperCase()}_APPLICATION_ID=${result.appObjectId}
                 ${params.envType.toUpperCase()}_SERVICE_PRINCIPAL_ID=${result.servicePrincipalId}
                 \`\`\`
 
@@ -687,7 +687,7 @@ USE WHEN:
           text: `Successfully created federated identity credential
 
               Credential Details:
-              - Application ID: ${result.appId}
+              - Application Object ID: ${result.appObjectId}
               - Credential Name: ${result.credentialName}
               - Subject: ${result.subject}`
         }]

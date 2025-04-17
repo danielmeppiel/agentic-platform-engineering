@@ -154,7 +154,7 @@ export class AzureClient {
     deploymentRG: string;
   }): Promise<{
     appId: string;
-    applicationId: string;
+    appObjectId: string;
     servicePrincipalId: string;
     displayName: string;
   }> {
@@ -172,7 +172,7 @@ export class AzureClient {
     console.error(`Successfully created Entra App with ID: ${appData.id}`);
     
     const appId = appData.appId;
-    const applicationId = appData.id;
+    const appObjectId = appData.id;
     
     console.error(`Creating Service Principal for app ID: ${appId}`);
     let servicePrincipalId: string;
@@ -256,7 +256,7 @@ export class AzureClient {
     
     return {
       appId,
-      applicationId,
+      appObjectId,
       servicePrincipalId,
       displayName
     };
@@ -268,7 +268,7 @@ export class AzureClient {
     envType: string;
     projectName?: string;
   }): Promise<{
-    appId: string;
+    appObjectId: string;
     credentialName: string;
     subject: string;
   }> {
@@ -286,16 +286,16 @@ export class AzureClient {
       throw new Error(`Microsoft Entra application with display name "${projectName}-${envType}" not found`);
     }
     
-    const appId = appData.id;
+    const appObjectId = appData.id;
     const credName = `ADE-${params.orgName}-${params.repoName}-${envType}`;
     const credSubject = `repo:${params.orgName}/${params.repoName}:environment:${envType}`;
     
     execSync(`az rest --method POST \
-      --uri "https://graph.microsoft.com/beta/applications/${appId}/federatedIdentityCredentials" \
+      --uri "https://graph.microsoft.com/beta/applications/${appObjectId}/federatedIdentityCredentials" \
       --body '{"name":"${credName}","issuer":"https://token.actions.githubusercontent.com","subject":"${credSubject}","description":"${envType}","audiences":["api://AzureADTokenExchange"]}'`);
     
     return {
-      appId,
+      appObjectId,
       credentialName: credName,
       subject: credSubject
     };
