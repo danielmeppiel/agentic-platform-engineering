@@ -23,7 +23,7 @@ Help me create a new project by following these steps - please do strictly follo
    - Fetch the contents of the workflowsUrl of that organization - this is a folder containing all the approved CI GitHub Actions workflows
    - Recommend appropriate workflows based on project type
    - Ask the user to confirm the workflow template choice
-   - Once the user confirms the template choice, create a workflow in the new repository by reading/fething the template workflow contents and then pushing a new workflow file to the new repo created above. Use the GitHub MCP tools for this.
+   - Once the user confirms the template choice, create a workflow in the new repository by reading/fetching the template workflow contents and then pushing a new workflow file to the new repo created above. Use the GitHub MCP tools for this.
 
 5. Final Steps:
    - Summarize all actions taken
