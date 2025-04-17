@@ -24,11 +24,13 @@
     "@modelcontextprotocol/sdk": "^1.8.0",
     "dotenv": "^16.4.7",
     "js-yaml": "^4.1.0",
+    "libsodium-wrappers": "^0.7.15",
     "octokit": "^4.1.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
+    "@types/libsodium-wrappers": "^0.7.14",
     "@types/node": "^20.8.2",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",

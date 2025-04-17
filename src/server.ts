@@ -4,6 +4,7 @@ import { z } from "zod";
 import * as yaml from 'js-yaml';
 import { PEConfig } from './types.js';
 import { GitHubClient } from './github.js';
+import { AzureClient } from './azure.js';
 
 // GitHub authentication environment variables
 const GITHUB_PAT: string = process.env.GITHUB_PAT || '';
@@ -30,6 +31,26 @@ const githubClient = new GitHubClient({
   appId: GITHUB_APP_ID,
   privateKey: GITHUB_PRIVATE_KEY,
   installationId: GITHUB_INSTALLATION_ID,
+});
+
+// Environment variables for Azure authentication
+const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID || '';
+const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID || '';
+const AZURE_CLIENT_ID = process.env.AZURE_CLIENT_ID || '';
+const AZURE_CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || '';
+const DEVCENTER_NAME = process.env.DEVCENTER_NAME || '';
+const DEVCENTER_PROJECT = process.env.DEVCENTER_PROJECT || '';
+const DEVCENTER_CATALOG = process.env.DEVCENTER_CATALOG || '';
+
+// Initialize Azure client
+const azureClient = new AzureClient({
+  devCenterName: DEVCENTER_NAME,
+  devCenterProject: DEVCENTER_PROJECT,
+  devCenterCatalog: DEVCENTER_CATALOG,
+  subscriptionId: AZURE_SUBSCRIPTION_ID,
+  tenantId: AZURE_TENANT_ID,
+  clientId: AZURE_CLIENT_ID,
+  clientSecret: AZURE_CLIENT_SECRET
 });
 
 // Load PE configuration from GitHub repository
@@ -122,6 +143,14 @@ CAPABILITIES:
 - Finds templates with specific features or capabilities
 - Filters by compliance requirements (e.g., HIPAA, SOC2)
 - Matches complexity levels for different project scales
+
+PARAMETERS:
+- language (optional): Programming language to filter templates by (e.g., 'typescript', 'python')
+- framework (optional): Framework or library requirement (e.g., 'react', 'django')
+- architectureType (optional): Architectural pattern to match (e.g., 'microservices', 'monolith')
+- feature (optional): Specific feature to filter by (e.g., 'authentication', 'database')
+- compliance (optional): Compliance requirement to filter by (e.g., 'HIPAA', 'SOC2')
+- complexity (optional): Project complexity level (e.g., 'simple', 'complex')
 
 LIMITATIONS:
 - Only returns templates from pre-configured template repositories
@@ -217,6 +246,9 @@ CAPABILITIES:
 - Returns template URLs, descriptions, and metadata
 - Provides direct links to workflow template files
 
+PARAMETERS:
+- organization (optional): Name of the organization to filter templates by. Case-insensitive partial match is supported.
+
 LIMITATIONS:
 - Only returns templates from pre-configured workflow organizations
 - Does not create or modify workflow files directly
@@ -276,6 +308,15 @@ CAPABILITIES:
 - Includes all template repository files and structure
 - Maintains git history from template (optional)
 
+PARAMETERS:
+- template_owner (required): Owner of the template repository
+- template_repo (required): Name of the template repository
+- owner (required): Owner for the new repository
+- name (required): Name for the new repository
+- description (optional): Description for the new repository
+- private (optional): Whether the new repository should be private
+- include_all_branches (optional): Whether to include all branches from the template
+
 LIMITATIONS:
 - Requires template repository to be marked as template on GitHub
 - Cannot modify template contents during creation
@@ -316,8 +357,512 @@ USE WHEN:
   }
 );
 
+// Tool: Get environment definitions from Azure DevCenter
+server.tool("get-ade-defs",
+  `List environment definitions available in an Azure DevCenter project.
+
+PURPOSE:
+- List available environment definitions in a DevCenter project
+- Access standardized environment templates
+
+CAPABILITIES:
+- Lists environment definitions for a specific project
+- Returns detailed template information
+
+PARAMETERS:
+- projectName (optional): Name of the DevCenter project. If not provided, will use DEVCENTER_PROJECT environment variable.
+
+LIMITATIONS:
+- Requires project name
+- Requires appropriate Azure permissions
+- Must have Azure CLI and DevCenter extension installed
+
+USE WHEN:
+- Setting up new development environments
+- Exploring available environment templates`, {
+    projectName: z.string().optional()
+  },
+  async (params) => {
+    try {
+      const result = await azureClient.listEnvironmentDefinitions(params.projectName);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(JSON.parse(result), null, 2)
+        }]
+      };
+    } catch (error) {
+      console.error('Error retrieving environment definitions:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error retrieving environment definitions: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool: Get specific environment definition details
+server.tool("get-ade-def",
+  `Get details of a specific environment definition from Azure DevCenter.
+
+PURPOSE:
+- Retrieve detailed information about a specific environment definition
+- Check template parameters and requirements
+- View template configuration details
+
+CAPABILITIES:
+- Gets full definition details including parameters schema
+- Shows template path and configuration
+- Returns catalog and definition metadata
+
+PARAMETERS:
+- defName (required): Name of the environment definition to retrieve details for
+- catalogName (optional): Name of the catalog containing the definition (defaults to DEVCENTER_CATALOG env var)
+- projectName (optional): Name of the DevCenter project (defaults to DEVCENTER_PROJECT env var)
+
+LIMITATIONS:
+- Requires specific catalog, project and definition name
+
+USE WHEN:
+- Inspecting environment definition details
+- Checking template parameters
+- Validating template configuration`, {
+    defName: z.string(),
+    catalogName: z.string().optional(),
+    projectName: z.string().optional()
+  },
+  async (params) => {
+    try {
+      const result = await azureClient.getEnvironmentDefinition(params);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(JSON.parse(result), null, 2)
+        }]
+      };
+    } catch (error) {
+      console.error('Error retrieving environment definition details:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error retrieving environment definition details: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool 4: Create an Azure Deployment Environment (ADE)
+server.tool("create-ade-env",
+  `Create an Azure Deployment Environment (ADE) and return resource group details.
+
+PURPOSE:
+- Create consistent deployment environments based on existing IaC templates
+
+CAPABILITIES:
+- Creates a new environment in Azure based on a template in the DevCenter project
+- Returns the resource group and subscription information
+- Enables infrastructure provisioning via templates
+
+PARAMETERS:
+- envName (required): Name for the new environment. Must be unique within the project
+- envType (required): Type of environment to create (e.g., 'Dev', 'Test', 'Prod')
+- envDefName (required): Name of the environment definition template to use
+- projectName (optional): Name of the DevCenter project (defaults to DEVCENTER_PROJECT env var)
+- catalogName (optional): Name of the catalog containing the definition (defaults to DEVCENTER_CATALOG env var)
+- parameters (optional): JSON string containing deployment parameters for the environment
+
+LIMITATIONS:
+- Requires valid project, environment type, and DevCenter name
+- Environment name must be unique within the project
+
+USE WHEN:
+- Setting up new deployment environments
+- Creating ephemeral testing environments
+- Provisioning standardized infrastructure
+- Implementing infrastructure as code based on enterprise approved templates`, {
+    envName: z.string(),
+    envType: z.string(),
+    envDefName: z.string(),
+    projectName: z.string().optional(),
+    catalogName: z.string().optional(),
+    parameters: z.string().optional(), // JSON string containing deployment parameters
+  },
+  async (params) => {
+    try {
+      const result = await azureClient.createEnvironment(params);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully created environment "${params.envName}"\n\nEnvironment Details:\n- Resource Group ID: ${result.resourceGroupId}\n- Resource Group: ${result.resourceGroup}\n- Subscription: ${result.subscription}`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating ADE environment:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating ADE environment: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool: List Azure resources in a resource group
+server.tool("get-ade-resources",
+  `List all Azure resources in a resource group.
+
+PURPOSE:
+- Inspect resources deployed in an Azure Deployment Environment
+- Understand the infrastructure components available
+- Help determine deployment strategies based on resource types
+
+CAPABILITIES:
+- Lists all resources in a specified resource group
+- Returns detailed ARM-format JSON for each resource
+- Includes resource types, names, locations, and properties
+- Shows resource relationships and dependencies
+
+PARAMETERS:
+- resourceGroup (required): Name of the resource group containing the resources to list
+
+LIMITATIONS:
+- Resource group must exist
+
+USE WHEN:
+- Analyzing deployed Azure resources
+- Planning deployment strategies
+- Debugging resource provisioning
+- Understanding available infrastructure`, {
+    resourceGroup: z.string()
+  },
+  async (params) => {
+    try {
+      const result = await azureClient.listResources(params.resourceGroup);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(JSON.parse(result), null, 2)
+        }]
+      };
+    } catch (error) {
+      console.error('Error listing Azure resources:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error listing Azure resources: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool: Create Microsoft Entra App and Service Principal
+server.tool("create-entra-app-and-sp",
+  `Create a Microsoft Entra Application and Service Principal for an Azure Deployment Environment type.
+
+PURPOSE:
+- Create a Microsoft Entra application and service principal for authenticating ADE deployments
+- Establishes identity needed for GitHub Actions to deploy to Azure environments
+- First step in setting up OpenID Connect (OIDC) authentication for GitHub Actions
+- Sets up appropriate RBAC roles for the service principal
+
+CAPABILITIES:
+- Creates a Microsoft Entra application with a display name following pattern [Project]-[EnvType]
+- Creates a service principal for the application
+- Assigns Reader role on the project level
+- Assigns Deployment Environments User role for the specific environment type
+- Assigns Contributor role to the specified deployment resource group
+- Returns necessary IDs for subsequent federated credential creation
+
+PARAMETERS:
+- envType (required): Environment type (e.g., 'Dev', 'Test', 'Prod')
+- deploymentRG (required): The resource group name (only the name!) where the Service Principal needs Contributor access
+- projectName (optional): Project name to use in the app display name (defaults to DEVCENTER_PROJECT env var)
+
+LIMITATIONS:
+- Requires Azure CLI with active authenticated session
+- User must have permissions to create applications in Microsoft Entra
+- User must have permissions to assign roles
+
+USE WHEN:
+- Setting up OpenID Connect authentication for GitHub Actions to Azure
+- Creating identity for new environment types
+- Establishing secure deployment pipelines with Azure`, {
+    envType: z.string(),
+    deploymentRG: z.string(),
+    projectName: z.string().optional(),
+  },
+  async (params) => {
+    try {
+      const result = await azureClient.createEntraAppAndSP(params);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully created Microsoft Entra App and Service Principal for ${result.displayName}
+
+                Application Details:
+                - Display Name: ${result.displayName}
+                - Application (Client) ID: ${result.appId}
+                - Application Object ID: ${result.appObjectId}
+                - Service Principal ID: ${result.servicePrincipalId}
+
+                Role Assignments:
+                - Reader role on DevCenter project scope
+                - Deployment Environments User role on environment type scope
+                - Contributor role on resource group: ${params.deploymentRG}
+
+                To use these values in subsequent commands, you can set these environment variables:
+                \`\`\`bash
+                ${params.envType.toUpperCase()}_AZURE_CLIENT_ID=${result.appId}
+                ${params.envType.toUpperCase()}_APPLICATION_ID=${result.appObjectId}
+                ${params.envType.toUpperCase()}_SERVICE_PRINCIPAL_ID=${result.servicePrincipalId}
+                \`\`\`
+
+                These IDs will be needed when creating federated credentials with the create-federated-credential tool.`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating Microsoft Entra App and Service Principal:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating Microsoft Entra App and Service Principal: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool: Create GitHub Actions federated credential
+server.tool("create-federated-credential",
+  `Create a federated identity credential for GitHub Actions OIDC authentication with Azure.
+
+PURPOSE:
+- Set up secure authentication between GitHub Actions and Azure
+- Establish OpenID Connect (OIDC) trust relationship for secure deployments
+
+CAPABILITIES:
+- Finds Microsoft Entra application by display name pattern [DevCenter Project]-[EnvType]
+- Creates federated identity credential linking the application to a GitHub repository
+- Configures OIDC subject claims for secure token-based authentication
+
+PARAMETERS:
+- orgName (required): GitHub organization name
+- repoName (required): GitHub repository name
+- envType (required): Environment type (e.g., 'Dev', 'Test', 'Prod') that matches the Entra app
+- projectName (optional): Project name used in the app display name (defaults to DEVCENTER_PROJECT env var)
+
+LIMITATIONS:
+- Requires the Microsoft Entra application to exist already
+- GitHub repository must exist and be properly configured
+- Microsoft Entra app must follow naming pattern [Project]-[EnvType]
+
+USE WHEN:
+- Configuring secure GitHub Actions workflows for Azure deployments
+- Setting up CI/CD pipelines with OIDC authentication
+- After creating Microsoft Entra app and service principal`, {
+    orgName: z.string(),
+    repoName: z.string(),
+    envType: z.string(),
+    projectName: z.string().optional(),
+  },
+  async (params) => {
+    try {
+      const result = await azureClient.createFederatedCredential(params);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully created federated identity credential
+
+              Credential Details:
+              - Application Object ID: ${result.appObjectId}
+              - Credential Name: ${result.credentialName}
+              - Subject: ${result.subject}`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating federated credential:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating federated credential: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool: Create GitHub Deployment Environment
+server.tool("create-deployment-environment",
+  `Create a deployment environment in a GitHub repository.
+
+PURPOSE:
+- Create deployment environments for GitHub Actions workflows
+- Set up protected environments with optional review requirements
+- Configure deployment branch policies and wait timers
+
+CAPABILITIES:
+- Creates or updates a deployment environment in a GitHub repository
+- Supports configuration of wait timers for deployments
+- Allows setting up required reviewers (users or teams)
+- Configures deployment branch policies
+- Returns environment details including URLs and timestamps
+
+PARAMETERS:
+- owner (required): GitHub organization or user name
+- repo (required): GitHub repository name
+- environment_name (required): Name of the environment to create
+- wait_timer (optional): Number of minutes to wait before allowing deployments
+- reviewers (optional): Array of reviewer objects with type (User/Team) and id
+- deployment_branch_policy (optional): Branch protection settings
+
+LIMITATIONS:
+- Requires appropriate repository permissions
+- Reviewer IDs must be valid GitHub user or team IDs
+- Wait timer must be between 0 and 43200 minutes (30 days)
+
+USE WHEN:
+- Setting up new deployment pipelines
+- Implementing environment protection rules
+- Creating staging or production environments
+- Configuring deployment approvals`, {
+    owner: z.string(),
+    repo: z.string(),
+    environment_name: z.string(),
+    wait_timer: z.number().min(0).max(43200).optional(),
+    reviewers: z.array(z.object({
+      type: z.enum(['User', 'Team']),
+      id: z.number()
+    })).optional(),
+    deployment_branch_policy: z.object({
+      protected_branches: z.boolean(),
+      custom_branch_policies: z.boolean()
+    }).optional()
+  },
+  async (params) => {
+    try {
+      const result = await githubClient.createDeploymentEnvironment(params);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully created/updated deployment environment: ${params.environment_name}
+
+              Environment Details:
+              - Name: ${result.name}
+              - URL: ${result.url}
+              - Created At: ${result.createdAt}
+              - Updated At: ${result.updatedAt}
+              ${params.wait_timer ? `- Wait Timer: ${params.wait_timer} minutes` : ''}
+              ${params.reviewers ? `- Required Reviewers: ${params.reviewers.length}` : ''}
+              ${params.deployment_branch_policy ? `- Branch Policy: ${JSON.stringify(params.deployment_branch_policy)}` : ''}`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating deployment environment:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating deployment environment: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Tool: Create GitHub Environment Secret
+server.tool("create-environment-secret",
+  `Create or update an encrypted secret in a GitHub environment.
+
+PURPOSE:
+- Securely store sensitive information in GitHub environment secrets
+- Enable secure access to credentials in GitHub Actions workflows
+- Manage environment-specific configuration values
+
+CAPABILITIES:
+- Automatically retrieves environment-specific encryption keys
+- Encrypts secret values using LibSodium
+- Creates or updates secrets in GitHub environments
+- Uses GitHub's recommended encryption methods
+
+PARAMETERS:
+- owner (required): GitHub organization or user name
+- repo (required): GitHub repository name
+- environment_name (required): Name of the environment to add the secret to
+- secret_name (required): Name of the secret
+- value (required): The unencrypted value of the secret
+
+LIMITATIONS:
+- Requires appropriate repository permissions
+- Secret names must be valid GitHub secret names
+- Environment must exist before creating secrets
+- Maximum secret size limits apply
+
+USE WHEN:
+- Setting up deployment credentials
+- Storing environment-specific configuration
+- Managing API keys and tokens
+- Configuring service connections`, {
+    owner: z.string(),
+    repo: z.string(),
+    environment_name: z.string(),
+    secret_name: z.string(),
+    value: z.string()
+  },
+  async (params) => {
+    try {
+      const result = await githubClient.createEnvironmentSecret(params);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Successfully ${result.status} secret '${params.secret_name}' in environment '${params.environment_name}'
+
+                  Details:
+                  - Repository: ${params.owner}/${params.repo}
+                  - Environment: ${params.environment_name}
+                  - Secret Name: ${params.secret_name}
+                  - Status: ${result.status}`
+        }]
+      };
+    } catch (error) {
+      console.error('Error creating environment secret:', error);
+      return {
+        content: [{
+          type: "text",
+          text: `Error creating environment secret: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
 // Start the server
 async function main() {
+  // Ensure Azure authentication before starting
+  try {
+    await azureClient.ensureAuthenticated();
+    console.error('Successfully authenticated with Azure');
+  } catch (error) {
+    console.error('Failed to authenticate with Azure:', error);
+    process.exit(1);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
