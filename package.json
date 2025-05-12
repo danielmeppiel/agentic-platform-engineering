@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/microsoft/agentic-platform-engineering.git"
+    "url": "git+https://github.com/danielmeppiel/agentic-platform-engineering.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/microsoft/agentic-platform-engineering/issues"
+    "url": "https://github.com/danielmeppiel/agentic-platform-engineering/issues"
   },
-  "homepage": "https://github.com/microsoft/agentic-platform-engineering#readme",
+  "homepage": "https://github.com/danielmeppiel/agentic-platform-engineering#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
     "dotenv": "^16.4.7",
