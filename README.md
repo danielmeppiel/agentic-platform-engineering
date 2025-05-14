@@ -1,19 +1,17 @@
 # Agentic Platform Engineering with GitHub Copilot, Azure & MCP
 
-A Platform Engineering MCP Server that orchestrates end-to-end platform engineering workflows. This server enables developers to create new projects, provision environments, and manage infrastructure using natural language through GitHub Copilot, while ensuring compliance with organizational standards and best practices.
+A Platform Engineering MCP Server offering reusable platform engineering workflows based on Azure and GitHub that can be run by your Agent. 
 
-1. [Getting Started](#2-getting-started)
-2. [Usage](#1-use-cases)
-   - [New Project Creation](#11-new-project-creation)
-   - [Environment Provisioning](#12-environment-provisioning)
+1. [Getting Started](#1-getting-started)
+2. [Usage](#2-usage)
+    - [Create a GitHub Repository based on a Repo template](#21-create-a-github-repository-based-on-a-template)
+    - [Provision an Azure Deployment Environment and deploy your app](#22-provision-an-azure-deployment-environment-and-deploy-your-app)
 3. [Architecture Overview](#3-architecture-overview)
 4. [Detailed Workflow Sequence](#4-detailed-workflow-sequence)
 5. [MCP Components and Their Value](#5-mcp-components-and-their-value)
-   - [MCP Prompts: Guided Workflows](#51-mcp-prompts-guided-workflows)
-   - [MCP Tools: Executable Capabilities](#52-mcp-tools-executable-capabilities)
+    - [MCP Prompts: Guided Workflows](#51-mcp-prompts-guided-workflows)
+    - [MCP Tools: Executable Capabilities](#52-mcp-tools-executable-capabilities)
 6. [Configuration Repository](#6-configuration-repository)
-7. [Contributing](#7-contributing)
-8. [Trademarks](#8-trademarks)
 
 ## 1. Getting Started
 
@@ -91,16 +89,100 @@ You must either create or choose an existing repository as the one which will ho
 
 In your chosen repository:
 
-  1. Create a file called `pe.yaml`.
+  1. Create a file called `pe.yaml`. 
   2. Copy and paste the contents of the `config/pe.yaml` example file in this repo. This is just a starter example that you must edit.
   3. Edit your `pe.yaml` file to point to your repository templates. [GitHub's documentation on creating repository templates](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-template-repository).
   4. Edit your `pe.yaml` file to point to GitHub Organizations from where you want to source GitHub Actions workflow templates. These must be located under the `.github` repo's `workflow-templates` folder in each of the Organizations you add. [GitHub's documentation on creating workflow templates for your organization](https://docs.github.com/en/actions/sharing-automations/creating-workflow-templates-for-your-organization). 
 
+Read more about this configuration repository at  [6. Configuration Repository](#6-configuration-repository), which explains the structure and purpose of the `pe.yaml` file.
+
 ### 1.3 Setup the MCP Server in VSCode Insiders
 
-In VSCode Insiders, add a new MCP Server to your User Settings JSON file. You can use either authentication method:
+In VSCode Insiders, add a new MCP Server to your User Settings JSON file. You can use either authentication method. We recommend using Docker (preferred) for easier setup and consistency.
 
-#### Option 1: Using GitHub Personal Access Token
+#### Option 1: Using Docker (Recommended)
+
+Docker provides an isolated environment with all dependencies pre-installed, including the Azure CLI.
+
+##### With GitHub Personal Access Token
+
+```json
+"mcp": {
+    "servers": {
+        "platform-eng-copilot": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e", "GITHUB_PAT",
+                "-e", "AZURE_SUBSCRIPTION_ID",
+                "-e", "AZURE_TENANT_ID",
+                "-e", "AZURE_CLIENT_ID",
+                "-e", "AZURE_CLIENT_SECRET",
+                "-e", "PE_CONFIG_REPO",
+                "-e", "DEVCENTER_NAME",
+                "-e", "DEVCENTER_PROJECT",
+                "-e", "DEVCENTER_CATALOG",
+                "platform-eng-copilot"
+            ],
+            "env": {
+                "GITHUB_PAT": "<YOUR_GITHUB_PERSONAL_ACCESS_TOKEN>",
+
+                "AZURE_SUBSCRIPTION_ID":"<YOUR_AZURE_SUBSCRIPTION_ID>",
+                "AZURE_TENANT_ID":"<YOUR_AZURE_TENANT_ID>",
+                "AZURE_CLIENT_ID":"<YOUR_AZURE_CLIENT_ID>",
+                "AZURE_CLIENT_SECRET":"<YOUR_AZURE_CLIENT_SECRET>",
+                
+                "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>",
+                "DEVCENTER_NAME":"<YOUR_DEVCENTER_NAME>",
+                "DEVCENTER_PROJECT":"<YOUR_DEVCENTER_PROJECT>",
+                "DEVCENTER_CATALOG":"<YOUR_DEVCENTER_CATALOG>"
+            }
+        }
+    }
+}
+```
+
+##### With GitHub App Authentication
+
+```json
+"mcp": {
+    "servers": {
+        "platform-eng-copilot": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e", "GITHUB_APP_ID",
+                "-e", "GITHUB_PRIVATE_KEY",
+                "-e", "GITHUB_INSTALLATION_ID",
+                "-e", "AZURE_SUBSCRIPTION_ID",
+                "-e", "AZURE_TENANT_ID",
+                "-e", "AZURE_CLIENT_ID",
+                "-e", "AZURE_CLIENT_SECRET",
+                "-e", "PE_CONFIG_REPO",
+                "-e", "DEVCENTER_NAME",
+                "-e", "DEVCENTER_PROJECT",
+                "-e", "DEVCENTER_CATALOG",
+                "platform-eng-copilot"
+            ],
+            "env": {
+                "GITHUB_APP_ID": "<YOUR_GITHUB_APP_ID>",
+                "GITHUB_PRIVATE_KEY":"<YOUR_GITHUB_APP_PRIVATE_KEY_WITH_NO_BREAKLINES>",
+                "GITHUB_INSTALLATION_ID":"<YOUR_GITHUB_APP_INSTALLATION_ID>",
+                
+                ...
+            }
+        }
+    }
+}
+```
+
+#### Option 2: Using Node.js (Alternative)
+
+For development purposes, you can also run the MCP server directly with Node.js:
 
 ```json
 "mcp": {
@@ -112,28 +194,7 @@ In VSCode Insiders, add a new MCP Server to your User Settings JSON file. You ca
         ],
         "env": {
           "GITHUB_PAT": "<YOUR_GITHUB_PERSONAL_ACCESS_TOKEN>",
-          "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>"
-        }
-      }
-   }
-}
-```
-
-#### Option 2: Using GitHub App Authentication
-
-```json
-"mcp": {
-    "servers": {
-      "platform-eng-copilot": {
-        "command": "node",
-        "args": [
-            "<ABSOLUTE_PATH>/platform-eng-copilot/dist/server.js"
-        ],
-        "env": {
-          "GITHUB_APP_ID": "<YOUR_GITHUB_APP_ID>",
-          "GITHUB_PRIVATE_KEY":"<YOUR_GITHUB_APP_PRIVATE_KEY_WITH_NO_BREAKLINES>",
-          "GITHUB_INSTALLATION_ID":"<YOUR_GITHUB_APP_INSTALLATION_ID>",
-          "PE_CONFIG_REPO":"<YOUR_GITHUB_ORG>/<YOUR_REPO_WITH_PE_YAML_FILE>"
+          ...
         }
       }
    }
@@ -142,46 +203,25 @@ In VSCode Insiders, add a new MCP Server to your User Settings JSON file. You ca
 
 Make sure to replace all values between "<>" brackets with your actual configuration values. Only configure one authentication method - either PAT or GitHub App credentials.
 
-### 1.4 (Optional) Inspecting locally with MCP Inspector
-
-If you want to quickly debug this MCP server, create your .env file based on .env.example and then run locally with MCP Inspector:
-
-```bash
-npm install
-npm run build
-npx env-cmd -f .env npx @modelcontextprotocol/inspector node dist/server.js
-```
-
 ## 2. Usage
 
-**Option 1: Pre-baked PE workflows**:
 > [!NOTE] 
 > Using this MCP Server with VSCode won't allow you to use the implemented [MCP Prompts](https://spec.modelcontextprotocol.io/specification/2025-03-26/server/prompts/), as MCP Prompts are [not yet supported on VSCode](https://github.com/microsoft/vscode/issues/244173). 
 
-Use [VSCode Reusable prompts](https://code.visualstudio.com/docs/copilot/copilot-customization#_reusable-prompt-files-experimental) with the prompt files made available in this repo under `.github/prompts`. Think about these as recipes set up by your PE Admins which will guide the LLM in a standardized fashion. 
+Use [VSCode Reusable prompts](https://code.visualstudio.com/docs/copilot/copilot-customization#_reusable-prompt-files-experimental) with the prompt files made available in this repo under `.github/prompts`. Think about these as reusable workflows set up by your PE Admins which will guide the Agent through a complex task across several tools in your SDLC stack. 
 
-For example, attach the `scenario-1-repo.prompt.md` prompt file in `.github/prompts` to the context and send it to GitHub Copilot. 
+For example, attach the `create-repo.prompt.md` prompt file in `.github/prompts` to the context and send it to GitHub Copilot. 
 
-**Option 2: Simple prompting:**
+### 2.1 Create a GitHub Repository based on a template
 
-Simply ask GitHub Copilot to help you with a task such as:
+**Value Proposition**: Automate the creation of standardized, compliant repositories based on GitHub Repository templates.
 
->_Create a new repo for me based on a official template from my organization_
-
->_Set up CI/CD for my repo respecting my organization's standards_
-
->_Create a deployment environment for my microservices app using AKS based on approved templates_
-
-### 2.1 Pre-baked PE Workflows 
-
-**Value Proposition**: Automate the creation of standardized, compliant projects in minutes instead of hours.
-
-**Reusable Prompt**: `.github/prompts/scenario-1-repo.prompt.md`
+**Reusable Prompt**: `.github/prompts/create-repo.prompt.md`
 
 **Workflow**:
 1. Developer expresses intent to create a new project
 2. LLM gathers requirements through natural conversation
-3. PE MCP Server provides appropriate templates based on requirements
+3. PE MCP Server provides appropriate GitHub repo templates based on requirements
 4. LLM recommends best template and explains reasoning
 5. Upon confirmation, GitHub MCP creates repository from template
 6. LLM recommends appropriate CI/CD workflows from PE MCP Server
@@ -189,11 +229,11 @@ Simply ask GitHub Copilot to help you with a task such as:
 8. LLM offers to provision test environment
 9. Azure MCP provisions resources if requested
 
-### 2.2 Environment Provisioning
+### 2.2 Provision an Azure Deployment Environment and deploy your app
 
-**Value Proposition**: Standardize environment creation across teams with built-in compliance and best practices.
+**Value Proposition**: Let the agent pick up the right ADE template for your app, provision the environment in Azure, generate the GitHub Actions CD workflow and deploy your app. 
 
-**Reusable Prompt**: `.github/prompts/scenario-2-env.prompt.md`
+**Reusable Prompt**: `.github/prompts/ade-deploy.prompt.md`
 
 **Workflow**:
 1. Developer requests environment for existing project
@@ -359,43 +399,55 @@ MCP Tools enable concrete actions and information retrieval:
 
 ## 6. Configuration Repository
 
-The PE MCP Server reads from a central configuration repository that contains YAML files defining available templates such as: GitHub Repository templates, GitHub Actions workflow templates or Azure Deployment Environment templates:
+The PE MCP Server reads from a configuration file named `pe.yaml` that defines your platform engineering sources and templates. This file is structured into two main sections:
+
+### 6.1 GitHub Workflow Organizations (`github_workflow_orgs`)
+
+This section defines the GitHub organizations from which to source workflow templates. Each organization entry includes:
 
 ```yaml
-# templates.yaml
-templates:
-  repositories:
-    - name: java-springboot-microservice
-      description: "Spring Boot microservice with OAuth2 security and API documentation"
-      url: "github.com/org/java-springboot-template"
-      language: java
-      framework: springboot
-      architectureType: microservice
-      features:
+github_workflow_orgs:
+  - name: "my-company"          # Name of the organization
+    url: "https://github.com/my-company"  # Organization's GitHub URL
+    description: "Main company organization containing standard CI/CD workflows"
+```
+
+The workflow templates must be stored in the `.github/workflow-templates` directory of each listed organization. This follows [GitHub's standard for organization workflow templates](https://docs.github.com/en/actions/sharing-automations/creating-workflow-templates-for-your-organization).
+
+### 6.2 GitHub Repository Templates (`github_repository_templates`)
+
+This section defines repository templates that can be used as starting points for new projects. Each template includes comprehensive metadata to help the LLM make informed recommendations:
+
+```yaml
+github_repository_templates:
+  - name: "java-springboot-microservice"  # Template name
+    url: "https://github.com/my-company/java-springboot-template"  # Template repository URL
+    description: "Spring Boot microservice with OAuth2 security and API documentation"
+    metadata:
+      language: java              # Primary programming language
+      framework: springboot       # Main framework used
+      architectureType: microservice  # Type of application architecture
+      features:                   # Key features and capabilities
         - oauth2
         - swagger
         - actuator
-      compliance:
+      compliance:                 # Compliance standards met
         - soc2
-      use-cases:
+      use-cases:                 # Recommended use cases
         - "Backend services requiring authentication"
-      complexity: medium
-      
-  workflows:
-    - organization: "my-org"
-      include: 
-       - 'java-ci-workflow'
-      
-    - organization: "my-org2"
-      include:
-       - '*'
-      
-  environments:
-    - name: java-test-environment
-      description: "Test environment for Java microservices with database and monitoring"
-      language: java
-      resources:
-        - kubernetes-namespace
-        - postgres-database
-        - prometheus-monitoring
-``
+      complexity: medium         # Project complexity level
+```
+
+The metadata helps the AI agent understand:
+- Technical stack (language, framework)
+- Architecture patterns
+- Built-in features and capabilities
+- Compliance requirements met
+- Intended use cases
+- Project complexity
+
+This rich metadata enables the LLM to:
+1. Match templates to user requirements
+2. Explain template recommendations
+3. Guide users through template customization
+4. Suggest appropriate workflows and environments

@@ -1,6 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 import * as yaml from 'js-yaml';
 import { PEConfig } from './types.js';
 import { GitHubClient } from './github.js';
@@ -21,7 +21,9 @@ if (!PE_CONFIG_REPO) {
 }
 
 if (!GITHUB_PAT && (!GITHUB_APP_ID || !GITHUB_PRIVATE_KEY || !GITHUB_INSTALLATION_ID)) {
-  console.error('Missing required environment variables: either GITHUB_PAT or all GitHub App credentials (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID) must be provided');
+  console.error(
+    'Missing required environment variables: either GITHUB_PAT or all GitHub App credentials (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID) must be provided',
+  );
   process.exit(1);
 }
 
@@ -50,7 +52,7 @@ const azureClient = new AzureClient({
   subscriptionId: AZURE_SUBSCRIPTION_ID,
   tenantId: AZURE_TENANT_ID,
   clientId: AZURE_CLIENT_ID,
-  clientSecret: AZURE_CLIENT_SECRET
+  clientSecret: AZURE_CLIENT_SECRET,
 });
 
 // Load PE configuration from GitHub repository
@@ -64,22 +66,22 @@ async function loadPEConfig(): Promise<PEConfig> {
     return {
       sources: {
         github_workflow_orgs: [],
-        github_repository_templates: []
-      }
+        github_repository_templates: [],
+      },
     };
   }
 }
 
 // Create an MCP server
 const server = new McpServer({
-  name: "Platform Engineering Copilot",
-  version: "1.0.0"
+  name: 'Platform Engineering Copilot',
+  version: '1.0.0',
 });
 
 // Add create-project prompt to guide through project creation
 server.prompt(
-  "create-project",
-  "Guide through creating a new project with standardized templates and workflows",
+  'create-project',
+  'Guide through creating a new project with standardized templates and workflows',
   {
     language: z.string().optional(),
     framework: z.string().optional(),
@@ -87,14 +89,23 @@ server.prompt(
     features: z.string().optional(),
     compliance: z.string().optional(),
     complexity: z.string().optional(),
-    needsTestEnv: z.string().optional()
+    needsTestEnv: z.string().optional(),
   },
-  async ({ language, framework, architectureType, features, compliance, complexity, needsTestEnv }) => ({
-    messages: [{
-      role: "user",
-      content: {
-        type: "text",
-        text: `Help me create a new project by following these steps:
+  async ({
+    language,
+    framework,
+    architectureType,
+    features,
+    compliance,
+    complexity,
+    needsTestEnv,
+  }) => ({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `Help me create a new project by following these steps:
 
           1. Gather Requirements:
             - Review provided parameters (language: ${language || 'unspecified'}, framework: ${framework || 'unspecified'})
@@ -117,17 +128,19 @@ server.prompt(
 
           5. Final Steps:
             - Summarize all actions taken
-            - Provide next steps and resources to the user`
-      }
-    }]
-  })
+            - Provide next steps and resources to the user`,
+        },
+      },
+    ],
+  }),
 );
 
 // Load the PE configuration
 const peConfig = await loadPEConfig();
 
 // Tool 1: Get available repository templates with optional filters
-server.tool("get-repository-templates", 
+server.tool(
+  'get-repository-templates',
   `Retrieve and filter standardized repository templates based on project requirements.
 
 PURPOSE:
@@ -162,77 +175,86 @@ USE WHEN:
 - Starting new development projects
 - Ensuring compliance with organizational standards
 - Implementing standardized project structures
-- Selecting templates based on technical requirements`, {
+- Selecting templates based on technical requirements`,
+  {
     language: z.string().optional(),
     framework: z.string().optional(),
     architectureType: z.string().optional(),
     feature: z.string().optional(),
     compliance: z.string().optional(),
-    complexity: z.string().optional()
+    complexity: z.string().optional(),
   },
   async (params) => {
     let templates = peConfig.sources.github_repository_templates;
 
     // Apply filters if provided
     if (params.language) {
-      templates = templates.filter(t => 
-        t.metadata.language.toLowerCase() === params.language?.toLowerCase());
+      templates = templates.filter(
+        (t) => t.metadata.language.toLowerCase() === params.language?.toLowerCase(),
+      );
     }
-    
+
     if (params.framework) {
-      templates = templates.filter(t => 
-        t.metadata.framework.toLowerCase() === params.framework?.toLowerCase());
+      templates = templates.filter(
+        (t) => t.metadata.framework.toLowerCase() === params.framework?.toLowerCase(),
+      );
     }
-    
+
     if (params.architectureType) {
-      templates = templates.filter(t => 
-        t.metadata.architectureType.toLowerCase() === params.architectureType?.toLowerCase());
+      templates = templates.filter(
+        (t) => t.metadata.architectureType.toLowerCase() === params.architectureType?.toLowerCase(),
+      );
     }
-    
+
     if (params.feature) {
-      templates = templates.filter(t => 
-        t.metadata.features.some(f => f.toLowerCase() === params.feature?.toLowerCase()));
+      templates = templates.filter((t) =>
+        t.metadata.features.some((f) => f.toLowerCase() === params.feature?.toLowerCase()),
+      );
     }
-    
+
     if (params.compliance) {
-      templates = templates.filter(t => 
-        t.metadata.compliance.some(c => c.toLowerCase() === params.compliance?.toLowerCase()));
+      templates = templates.filter((t) =>
+        t.metadata.compliance.some((c) => c.toLowerCase() === params.compliance?.toLowerCase()),
+      );
     }
-    
+
     if (params.complexity) {
-      templates = templates.filter(t => 
-        t.metadata.complexity.toLowerCase() === params.complexity?.toLowerCase());
+      templates = templates.filter(
+        (t) => t.metadata.complexity.toLowerCase() === params.complexity?.toLowerCase(),
+      );
     }
 
     // Format the results
-    const formattedTemplates = templates.map(t => ({
+    const formattedTemplates = templates.map((t) => ({
       name: t.name,
       url: t.url,
       description: t.description,
       language: t.metadata.language,
       framework: t.metadata.framework,
       architectureType: t.metadata.architectureType,
-      features: t.metadata.features.join(", "),
-      compliance: t.metadata.compliance.join(", "),
-      useCases: t.metadata["use-cases"].join(", "),
-      complexity: t.metadata.complexity
+      features: t.metadata.features.join(', '),
+      compliance: t.metadata.compliance.join(', '),
+      useCases: t.metadata['use-cases'].join(', '),
+      complexity: t.metadata.complexity,
     }));
 
     return {
       content: [
-        { 
-          type: "text", 
-          text: templates.length > 0 
-            ? `Found ${templates.length} matching repository templates:\n\n${JSON.stringify(formattedTemplates, null, 2)}`
-            : "No repository templates found matching the provided filters."
-        }
-      ]
+        {
+          type: 'text',
+          text:
+            templates.length > 0
+              ? `Found ${templates.length} matching repository templates:\n\n${JSON.stringify(formattedTemplates, null, 2)}`
+              : 'No repository templates found matching the provided filters.',
+        },
+      ],
     };
-  }
+  },
 );
 
 // Tool 2: Get available GitHub Actions templates with optional filters
-server.tool("get-github-actions-templates",
+server.tool(
+  'get-github-actions-templates',
   `Retrieve and filter GitHub Actions workflow templates from configured workflow organizations.
 
 PURPOSE:
@@ -259,41 +281,45 @@ USE WHEN:
 - Setting up new CI/CD pipelines
 - Standardizing workflow patterns across repositories
 - Finding organization-approved workflow templates
-- Implementing best practices for GitHub Actions`, {
-    organization: z.string().optional()
+- Implementing best practices for GitHub Actions`,
+  {
+    organization: z.string().optional(),
   },
   async (params) => {
     let workflowOrgs = peConfig.sources.github_workflow_orgs;
-    
+
     // Filter by organization if provided
     if (params.organization) {
-      workflowOrgs = workflowOrgs.filter(org => 
-        org.name.toLowerCase().includes(params.organization?.toLowerCase() || ''));
+      workflowOrgs = workflowOrgs.filter((org) =>
+        org.name.toLowerCase().includes(params.organization?.toLowerCase() || ''),
+      );
     }
 
     // Format the results
-    const formattedOrgs = workflowOrgs.map(org => ({
+    const formattedOrgs = workflowOrgs.map((org) => ({
       name: org.name,
       url: org.url,
       description: org.description,
-      workflowsUrl: `${org.url}/.github/workflow-templates`
+      workflowsUrl: `${org.url}/.github/workflow-templates`,
     }));
 
     return {
       content: [
-        { 
-          type: "text", 
-          text: workflowOrgs.length > 0 
-            ? `Found ${workflowOrgs.length} GitHub organizations with workflow templates:\n\n${JSON.stringify(formattedOrgs, null, 2)}`
-            : "No GitHub organizations found matching the provided filters."
-        }
-      ]
+        {
+          type: 'text',
+          text:
+            workflowOrgs.length > 0
+              ? `Found ${workflowOrgs.length} GitHub organizations with workflow templates:\n\n${JSON.stringify(formattedOrgs, null, 2)}`
+              : 'No GitHub organizations found matching the provided filters.',
+        },
+      ],
     };
-  }
+  },
 );
 
 // Tool 3: Create a new repository from a template
-server.tool("create-repository-from-template",
+server.tool(
+  'create-repository-from-template',
   `Create a new GitHub repository using a template repository.
 
 PURPOSE:
@@ -326,39 +352,45 @@ LIMITATIONS:
 USE WHEN:
 - Starting new projects based on standardized templates
 - Creating repositories that need specific initial structure
-- Implementing organization-wide repository patterns`, {
+- Implementing organization-wide repository patterns`,
+  {
     template_owner: z.string(),
     template_repo: z.string(),
     owner: z.string(),
     name: z.string(),
     description: z.string().optional(),
     private: z.boolean().optional(),
-    include_all_branches: z.boolean().optional()
+    include_all_branches: z.boolean().optional(),
   },
   async (params) => {
     try {
       const result = await githubClient.createRepositoryFromTemplate(params);
       return {
-        content: [{
-          type: "text",
-          text: `Successfully created repository ${result.fullName}\nURL: ${result.htmlUrl}`
-        }]
+        content: [
+          {
+            type: 'text',
+            text: `Successfully created repository ${result.fullName}\nURL: ${result.htmlUrl}`,
+          },
+        ],
       };
     } catch (error) {
       console.error('Error creating repository from template:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error creating repository: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error creating repository: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: Get environment definitions from Azure DevCenter
-server.tool("get-ade-defs",
+server.tool(
+  'get-ade-defs',
   `List environment definitions available in an Azure DevCenter project.
 
 PURPOSE:
@@ -379,33 +411,39 @@ LIMITATIONS:
 
 USE WHEN:
 - Setting up new development environments
-- Exploring available environment templates`, {
-    projectName: z.string().optional()
+- Exploring available environment templates`,
+  {
+    projectName: z.string().optional(),
   },
   async (params) => {
     try {
       const result = await azureClient.listEnvironmentDefinitions(params.projectName);
       return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(JSON.parse(result), null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(JSON.parse(result), null, 2),
+          },
+        ],
       };
     } catch (error) {
       console.error('Error retrieving environment definitions:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error retrieving environment definitions: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error retrieving environment definitions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: Get specific environment definition details
-server.tool("get-ade-def",
+server.tool(
+  'get-ade-def',
   `Get details of a specific environment definition from Azure DevCenter.
 
 PURPOSE:
@@ -429,35 +467,41 @@ LIMITATIONS:
 USE WHEN:
 - Inspecting environment definition details
 - Checking template parameters
-- Validating template configuration`, {
+- Validating template configuration`,
+  {
     defName: z.string(),
     catalogName: z.string().optional(),
-    projectName: z.string().optional()
+    projectName: z.string().optional(),
   },
   async (params) => {
     try {
       const result = await azureClient.getEnvironmentDefinition(params);
       return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(JSON.parse(result), null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(JSON.parse(result), null, 2),
+          },
+        ],
       };
     } catch (error) {
       console.error('Error retrieving environment definition details:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error retrieving environment definition details: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error retrieving environment definition details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool 4: Create an Azure Deployment Environment (ADE)
-server.tool("create-ade-env",
+server.tool(
+  'create-ade-env',
   `Create an Azure Deployment Environment (ADE) and return resource group details.
 
 PURPOSE:
@@ -484,7 +528,8 @@ USE WHEN:
 - Setting up new deployment environments
 - Creating ephemeral testing environments
 - Provisioning standardized infrastructure
-- Implementing infrastructure as code based on enterprise approved templates`, {
+- Implementing infrastructure as code based on enterprise approved templates`,
+  {
     envName: z.string(),
     envType: z.string(),
     envDefName: z.string(),
@@ -495,28 +540,33 @@ USE WHEN:
   async (params) => {
     try {
       const result = await azureClient.createEnvironment(params);
-      
+
       return {
-        content: [{
-          type: "text",
-          text: `Successfully created environment "${params.envName}"\n\nEnvironment Details:\n- Resource Group ID: ${result.resourceGroupId}\n- Resource Group: ${result.resourceGroup}\n- Subscription: ${result.subscription}`
-        }]
+        content: [
+          {
+            type: 'text',
+            text: `Successfully created environment "${params.envName}"\n\nEnvironment Details:\n- Resource Group ID: ${result.resourceGroupId}\n- Resource Group: ${result.resourceGroup}\n- Subscription: ${result.subscription}`,
+          },
+        ],
       };
     } catch (error) {
       console.error('Error creating ADE environment:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error creating ADE environment: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error creating ADE environment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: List Azure resources in a resource group
-server.tool("get-ade-resources",
+server.tool(
+  'get-ade-resources',
   `List all Azure resources in a resource group.
 
 PURPOSE:
@@ -540,33 +590,39 @@ USE WHEN:
 - Analyzing deployed Azure resources
 - Planning deployment strategies
 - Debugging resource provisioning
-- Understanding available infrastructure`, {
-    resourceGroup: z.string()
+- Understanding available infrastructure`,
+  {
+    resourceGroup: z.string(),
   },
   async (params) => {
     try {
       const result = await azureClient.listResources(params.resourceGroup);
       return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(JSON.parse(result), null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(JSON.parse(result), null, 2),
+          },
+        ],
       };
     } catch (error) {
       console.error('Error listing Azure resources:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error listing Azure resources: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error listing Azure resources: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: Create Microsoft Entra App and Service Principal
-server.tool("create-entra-app-and-sp",
+server.tool(
+  'create-entra-app-and-sp',
   `Create a Microsoft Entra Application and Service Principal for an Azure Deployment Environment type.
 
 PURPOSE:
@@ -596,7 +652,8 @@ LIMITATIONS:
 USE WHEN:
 - Setting up OpenID Connect authentication for GitHub Actions to Azure
 - Creating identity for new environment types
-- Establishing secure deployment pipelines with Azure`, {
+- Establishing secure deployment pipelines with Azure`,
+  {
     envType: z.string(),
     deploymentRG: z.string(),
     projectName: z.string().optional(),
@@ -604,11 +661,12 @@ USE WHEN:
   async (params) => {
     try {
       const result = await azureClient.createEntraAppAndSP(params);
-      
+
       return {
-        content: [{
-          type: "text",
-          text: `Successfully created Microsoft Entra App and Service Principal for ${result.displayName}
+        content: [
+          {
+            type: 'text',
+            text: `Successfully created Microsoft Entra App and Service Principal for ${result.displayName}
 
                 Application Details:
                 - Display Name: ${result.displayName}
@@ -628,24 +686,28 @@ USE WHEN:
                 ${params.envType.toUpperCase()}_SERVICE_PRINCIPAL_ID=${result.servicePrincipalId}
                 \`\`\`
 
-                These IDs will be needed when creating federated credentials with the create-federated-credential tool.`
-        }]
+                These IDs will be needed when creating federated credentials with the create-federated-credential tool.`,
+          },
+        ],
       };
     } catch (error) {
       console.error('Error creating Microsoft Entra App and Service Principal:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error creating Microsoft Entra App and Service Principal: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error creating Microsoft Entra App and Service Principal: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: Create GitHub Actions federated credential
-server.tool("create-federated-credential",
+server.tool(
+  'create-federated-credential',
   `Create a federated identity credential for GitHub Actions OIDC authentication with Azure.
 
 PURPOSE:
@@ -671,7 +733,8 @@ LIMITATIONS:
 USE WHEN:
 - Configuring secure GitHub Actions workflows for Azure deployments
 - Setting up CI/CD pipelines with OIDC authentication
-- After creating Microsoft Entra app and service principal`, {
+- After creating Microsoft Entra app and service principal`,
+  {
     orgName: z.string(),
     repoName: z.string(),
     envType: z.string(),
@@ -680,33 +743,38 @@ USE WHEN:
   async (params) => {
     try {
       const result = await azureClient.createFederatedCredential(params);
-      
+
       return {
-        content: [{
-          type: "text",
-          text: `Successfully created federated identity credential
+        content: [
+          {
+            type: 'text',
+            text: `Successfully created federated identity credential
 
               Credential Details:
               - Application Object ID: ${result.appObjectId}
               - Credential Name: ${result.credentialName}
-              - Subject: ${result.subject}`
-        }]
+              - Subject: ${result.subject}`,
+          },
+        ],
       };
     } catch (error) {
       console.error('Error creating federated credential:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error creating federated credential: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error creating federated credential: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: Create GitHub Deployment Environment
-server.tool("create-deployment-environment",
+server.tool(
+  'create-deployment-environment',
   `Create a deployment environment in a GitHub repository.
 
 PURPOSE:
@@ -738,28 +806,36 @@ USE WHEN:
 - Setting up new deployment pipelines
 - Implementing environment protection rules
 - Creating staging or production environments
-- Configuring deployment approvals`, {
+- Configuring deployment approvals`,
+  {
     owner: z.string(),
     repo: z.string(),
     environment_name: z.string(),
     wait_timer: z.number().min(0).max(43200).optional(),
-    reviewers: z.array(z.object({
-      type: z.enum(['User', 'Team']),
-      id: z.number()
-    })).optional(),
-    deployment_branch_policy: z.object({
-      protected_branches: z.boolean(),
-      custom_branch_policies: z.boolean()
-    }).optional()
+    reviewers: z
+      .array(
+        z.object({
+          type: z.enum(['User', 'Team']),
+          id: z.number(),
+        }),
+      )
+      .optional(),
+    deployment_branch_policy: z
+      .object({
+        protected_branches: z.boolean(),
+        custom_branch_policies: z.boolean(),
+      })
+      .optional(),
   },
   async (params) => {
     try {
       const result = await githubClient.createDeploymentEnvironment(params);
-      
+
       return {
-        content: [{
-          type: "text",
-          text: `Successfully created/updated deployment environment: ${params.environment_name}
+        content: [
+          {
+            type: 'text',
+            text: `Successfully created/updated deployment environment: ${params.environment_name}
 
               Environment Details:
               - Name: ${result.name}
@@ -768,24 +844,28 @@ USE WHEN:
               - Updated At: ${result.updatedAt}
               ${params.wait_timer ? `- Wait Timer: ${params.wait_timer} minutes` : ''}
               ${params.reviewers ? `- Required Reviewers: ${params.reviewers.length}` : ''}
-              ${params.deployment_branch_policy ? `- Branch Policy: ${JSON.stringify(params.deployment_branch_policy)}` : ''}`
-        }]
+              ${params.deployment_branch_policy ? `- Branch Policy: ${JSON.stringify(params.deployment_branch_policy)}` : ''}`,
+          },
+        ],
       };
     } catch (error) {
       console.error('Error creating deployment environment:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error creating deployment environment: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error creating deployment environment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Tool: Create GitHub Environment Secret
-server.tool("create-environment-secret",
+server.tool(
+  'create-environment-secret',
   `Create or update an encrypted secret in a GitHub environment.
 
 PURPOSE:
@@ -816,40 +896,45 @@ USE WHEN:
 - Setting up deployment credentials
 - Storing environment-specific configuration
 - Managing API keys and tokens
-- Configuring service connections`, {
+- Configuring service connections`,
+  {
     owner: z.string(),
     repo: z.string(),
     environment_name: z.string(),
     secret_name: z.string(),
-    value: z.string()
+    value: z.string(),
   },
   async (params) => {
     try {
       const result = await githubClient.createEnvironmentSecret(params);
-      
+
       return {
-        content: [{
-          type: "text",
-          text: `Successfully ${result.status} secret '${params.secret_name}' in environment '${params.environment_name}'
+        content: [
+          {
+            type: 'text',
+            text: `Successfully ${result.status} secret '${params.secret_name}' in environment '${params.environment_name}'
 
                   Details:
                   - Repository: ${params.owner}/${params.repo}
                   - Environment: ${params.environment_name}
                   - Secret Name: ${params.secret_name}
-                  - Status: ${result.status}`
-        }]
+                  - Status: ${result.status}`,
+          },
+        ],
       };
     } catch (error) {
       console.error('Error creating environment secret:', error);
       return {
-        content: [{
-          type: "text",
-          text: `Error creating environment secret: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error creating environment secret: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
       };
     }
-  }
+  },
 );
 
 // Start the server
