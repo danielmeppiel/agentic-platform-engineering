@@ -85,21 +85,10 @@ server.prompt(
   {
     language: z.string().optional(),
     framework: z.string().optional(),
-    architectureType: z.string().optional(),
     features: z.string().optional(),
     compliance: z.string().optional(),
-    complexity: z.string().optional(),
-    needsTestEnv: z.string().optional(),
   },
-  async ({
-    language,
-    framework,
-    architectureType,
-    features,
-    compliance,
-    complexity,
-    needsTestEnv,
-  }) => ({
+  async ({ language, framework, features, compliance }) => ({
     messages: [
       {
         role: 'user',
